@@ -1,0 +1,7 @@
+numpy
+scipy
+astropy
+PyQt6
+pyYAML
+h5py
+numba
