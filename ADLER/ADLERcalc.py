@@ -3439,7 +3439,6 @@ class SimpleCore(QObject):
                 # map_array[:len(curves[n]),pos] = curves[n][:,1].reshape(map_array[:len(curves[n]),pos].shape)
                 xmask[pos] = 1
             # apply smearing
-            # plot1D_sliders(mcurves, [], fig = self.single_figure, text = 'Results comparison.\n', label_override = ["Energy transfer [eV]", ""], curve_labels = labels[:len(curves)])
             # return None
             # print("RIXSMAP array min/max:",map_array.min(),map_array.max())
             virt_array = np.zeros(map_array.shape).astype(np.float64)
@@ -3483,7 +3482,6 @@ class SimpleCore(QObject):
                 if weight_array[n] > 0.0:
                     virt_array[:,n] /= weight_array[n]
             # plot!
-            # plot2D_sliders([virt_array, map_array], [(yaxis[0],yaxis[-1]), (xaxis[0], xaxis[-1])], fig = self.single_figure, text = "")
             self.map2D = [virt_array, map_array]
             self.map2Dplotax = [(ymin,ymax), (xmin, xmax)]
             self.rixs_worked = True
@@ -4135,7 +4133,6 @@ class NewSimpleCore(QStandardItemModel):
             # map_array[:len(curves[n]),pos] = curves[n][:,1].reshape(map_array[:len(curves[n]),pos].shape)
             xmask[pos] = 1
         # apply smearing
-        # plot1D_sliders(mcurves, [], fig = self.single_figure, text = 'Results comparison.\n', label_override = ["Energy transfer [eV]", ""], curve_labels = labels[:len(curves)])
         # return None
         # print("RIXSMAP array min/max:",map_array.min(),map_array.max())
         virt_array = np.zeros(map_array.shape).astype(np.float64)
@@ -4191,7 +4188,6 @@ class NewSimpleCore(QStandardItemModel):
             dump.write(" ".join([str(xxx) for xxx in map_xyz[n]]) + '\n')
         dump.close()
         # plot!
-        # plot2D_sliders([virt_array, map_array], [(yaxis[0],yaxis[-1]), (xaxis[0], xaxis[-1])], fig = self.single_figure, text = "")
         self.map2D = [virt_array, map_array]
         self.map2Dplotax = [(ymin,ymax), (xmin, xmax)]
         self.rixs_worked = True
@@ -4482,21 +4478,6 @@ class NewAdlerCore(QObject):
                 source.write(" ".join([str(u) for u in [kk, self.pardict[kk] ]]) + '\n')
             if not lastfunction == None:
                 source.write('Last function called: ' + str(lastfunction) + '\n')
-            source.close()
-    def load_last_params(self):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLERcore.txt'), 'r')
-        except:
-            return None
-        else:
-            for line in source:
-                toks = line.split()
-                if len(toks) > 1:
-                    if toks[0] == 'Lastdir:':
-                        try:
-                            self.temp_path = toks[1]
-                        except:
-                            pass
             source.close()
     def logger(self, message):
         now = time.gmtime()
@@ -6297,21 +6278,6 @@ class AdlerCore(QObject):
                 source.write(" ".join([str(u) for u in [kk, self.pardict[kk] ]]) + '\n')
             if not lastfunction == None:
                 source.write('Last function called: ' + str(lastfunction) + '\n')
-            source.close()
-    def load_last_params(self):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLERcore.txt'), 'r')
-        except:
-            return None
-        else:
-            for line in source:
-                toks = line.split()
-                if len(toks) > 1:
-                    if toks[0] == 'Lastdir:':
-                        try:
-                            self.temp_path = toks[1]
-                        except:
-                            pass
             source.close()
     def logger(self, message):
         now = time.gmtime()

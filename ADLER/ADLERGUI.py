@@ -404,7 +404,6 @@ class InterfaceTabbed:
         self.master.setCentralWidget(self.tabbar)
         self.master.setFont(GlobFont)
         self.load_last_params()
-        # self.save_last_params()
         self.logger("MAX_THREADS set to " + str(MAX_THREADS))
         self.logger("This value can be adjusted manually in ~/.ADLconfig.txt")
         self.confthread = QThread()
@@ -508,23 +507,6 @@ class InterfaceTabbed:
         self.tabview.triggerList()
         self.tabbar.setCurrentIndex(2)
         self.tabview.resizeColumnsToContents()
-    def save_last_params(self, lastfunction = None):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLconfig.txt'), 'w')
-        except:
-            return None
-        else:
-            source.write('Lastdir: '+str(self.temp_path) + '\n')
-            source.write('Lastfile: '+str(self.temp_name) + '\n')
-            for kk in self.input_keys:
-                source.write(" ".join([str(u) for u in [kk[0], kk[1], self.params[kk[0]][kk[1]]]]) + '\n')
-            if not lastfunction == None:
-                source.write('Last function called: ' + str(lastfunction) + '\n')
-            source.write('Matplotlib_scale: ' + str(mpl_scale) + '\n')
-            source.write('Matplotlib_figure_scale: ' + str(mpl_figure_scale) + '\n')
-            source.write('Font_scale: ' + str(font_scale) + '\n')
-            source.write('MAX_THREADS: ' + str(self.max_threads) + '\n')
-            source.close()
     def load_last_params(self):
         try:
             source = open(os.path.join(expanduser("~"),'.ADLconfig.txt'), 'r')
@@ -588,25 +570,6 @@ class InterfaceTabbed:
         layout.addWidget(figAgg)
         layout.addWidget(toolbar)
         return canvas, figure, layout
-    def MakeCanvasExtended(self, parent):
-        mdpi, winch, hinch = 75, 9.0*mpl_figure_scale, 7.0*mpl_figure_scale
-        canvas = QWidget(parent)
-        layout = QVBoxLayout(canvas)
-        figure = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg = FigureCanvasQTAgg(figure)
-        figAgg.setParent(canvas)
-        figAgg.setSizePolicy(QSizePolicy.Policy.Minimum,QSizePolicy.Policy.Minimum)
-        figAgg.updateGeometry()
-        toolbar = NavigationToolbar2QTAgg(figAgg, canvas)
-        toolbar.update()
-        layout.addWidget(figAgg)
-        layout.addWidget(toolbar)
-        figure2 = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg2 = FigureCanvasQTAgg(figure2)
-        figAgg2.setParent(parent)
-        figAgg2.setSizePolicy(QSizePolicy.Policy.Minimum,QSizePolicy.Policy.Minimum)
-        figAgg2.updateGeometry()
-        return canvas, figure, layout, figure2, figAgg2
     def MakeButton(self, parent, text, function, tooltip = ""):
         button = QPushButton(text, parent)
         if tooltip:

@@ -85,64 +85,6 @@ oldval = 0.0
 
 #### plotting part
 
-def plot2D(pic, ax, outFile = "", fig = None, text = ''):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    print(pic.shape, pic.min(), pic.max())
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (horizontal)', 'Pixels (vertical)']
-    topval = np.nan_to_num(pic).max()
-    if topval == 0.0:
-        topval = 1.0
-    xxx = axes.imshow(np.nan_to_num(pic)[::-1,:], extent = [ax[1][0], ax[1][-1],
-                                        ax[0][0], ax[0][-1]], interpolation = 'none',
-                                        cmap = mpl.get_cmap('OrRd'), aspect = 'auto',
-                                        vmin = np.percentile(pic, 20), vmax = np.percentile(pic, 90)
-                                        # vmin = 1e-3, vmax = 1.0
-                                        )
-    cb = mpl.colorbar(xxx, ax = xxx.axes, format = '%.1e', pad = 0.02)
-    cb.set_label(labels[0])
-    # cb.set_clim(-1, 2.0)
-    # xxx.autoscale()
-    # axes.contour(np.nan_to_num(pic), # [1e-3*np.nan_to_num(pic).max()], 
-    #                            extent = [ax[0][0], ax[0][-1], ax[1][0], ax[1][-1]],
-    #                            aspect = 'auto', linestyles = 'solid', linewidths = 1.0)
-    axes.grid(True)
-    axes.set_xlabel(axlabels[0])
-    axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    axtextf = fig.add_axes([0.20, 0.11, 0.10, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        fig.canvas.draw()
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-
 def plot1D(pic, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= [], 
                   legend_pos = 0):
     if fig == None:
@@ -839,20 +781,6 @@ class LogviewerTab(AdlerTab):
         self.log.setReadOnly(False)
         self.log.append(timestamp + message)
         self.log.setReadOnly(True)
-    def MakeCanvas(self, parent):
-        mdpi, winch, hinch = 75, 9.0*mpl_figure_scale, 7.0*mpl_figure_scale
-        canvas = QWidget(parent)
-        layout = QVBoxLayout(canvas)
-        figure = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg = FigureCanvasQTAgg(figure)
-        figAgg.setParent(canvas)
-        figAgg.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
-        figAgg.updateGeometry()
-        toolbar = NavigationToolbar2QTAgg(figAgg, canvas)
-        toolbar.update()
-        layout.addWidget(figAgg)
-        layout.addWidget(toolbar)
-        return canvas, figure, layout
     def MakeButton(self, parent, text, function, tooltip = ""):
         button = QPushButton(text, parent)
         if tooltip:
