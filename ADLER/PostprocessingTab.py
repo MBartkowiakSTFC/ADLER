@@ -89,27 +89,6 @@ GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
 
-#### filesystem monitoring part
-def FindUnprocessedFiles(fpath):
-    infiles, outfiles = [], []
-    # with os.scandir(fpath) as it:
-    for entry in os.scandir(fpath):
-        if entry.is_file():
-            tokens = entry.name.split('.')
-            name, extension = '.'.join(tokens[:-1]), tokens[-1]
-            if extension == 'sif':
-                infiles.append(name)
-            elif extension == 'asc':
-                if name[-3:] == '_1D':
-                    outfiles.append(name[:-3])
-                else:
-                    outfiles.append(name[:-3])
-    unp_files = []
-    for fnam in infiles:
-        if not fnam in outfiles:
-            unp_files.append(fnam)
-    return unp_files
-
 #### plotting part
 
 def plot2D(pic, ax, outFile = "", fig = None, text = ''):
@@ -828,12 +807,6 @@ class ProfileList(QStandardItemModel):
                     except:
                         self.item(nr, nc).setText("")
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
 class PostprocessingTab(AdlerTab):
     for_loading = pyqtSignal(object)
     clear = pyqtSignal()
@@ -1000,12 +973,6 @@ class PostprocessingTab(AdlerTab):
     def wrapper_multiplot(self):
         self.profile_list.update_values()
         self.core.multiplot()
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
-    def background_launch(self,  core_function,  args =[]):
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
     def save_last_params(self, lastfunction = None):
         try:
             source = open(os.path.join(expanduser("~"),'.ADLERpostprocess.txt'), 'w')

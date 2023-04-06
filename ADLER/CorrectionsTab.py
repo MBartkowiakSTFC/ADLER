@@ -83,27 +83,6 @@ GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
 
-#### filesystem monitoring part
-def FindUnprocessedFiles(fpath):
-    infiles, outfiles = [], []
-    # with os.scandir(fpath) as it:
-    for entry in os.scandir(fpath):
-        if entry.is_file():
-            tokens = entry.name.split('.')
-            name, extension = '.'.join(tokens[:-1]), tokens[-1]
-            if extension == 'sif':
-                infiles.append(name)
-            elif extension == 'asc':
-                if name[-3:] == '_1D':
-                    outfiles.append(name[:-3])
-                else:
-                    outfiles.append(name[:-3])
-    unp_files = []
-    for fnam in infiles:
-        if not fnam in outfiles:
-            unp_files.append(fnam)
-    return unp_files
-
 #### plotting part
 
 def plot2D(pic, ax, outFile = "", fig = None, text = ''):
@@ -472,12 +451,6 @@ correction_variables = [
                                'Comment':'Higher values of reduction factor lead to coarser binning of the data, \nwhich can be useful for plotting noisy data sets which do not require high resolution.'}, 
 ]
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
 class CorrectionsTab(AdlerTab):
     for_preprocess = pyqtSignal(object)
     for_process = pyqtSignal(object)
@@ -637,8 +610,6 @@ class CorrectionsTab(AdlerTab):
     def cleanup(self):
         self.corethread.quit()
         self.corethread.wait()
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
 #    def fake_data_button(self):
 #        self.core.generate_mock_dataset()
 #        plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)

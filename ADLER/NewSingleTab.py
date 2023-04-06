@@ -17,7 +17,10 @@
 # Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
-The GUI for the Andor Camera file loader.
+This is the core component of the ADLER GUI.
+SingleTab is a widget where a single measurement
+(possibly consisting of many files) can be loaded
+into ADLER and analysed.
 """
 
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, QSize,  QThread
@@ -82,27 +85,6 @@ from matplotlib.widgets import Slider
 GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
-
-#### filesystem monitoring part
-def FindUnprocessedFiles(fpath):
-    infiles, outfiles = [], []
-    # with os.scandir(fpath) as it:
-    for entry in os.scandir(fpath):
-        if entry.is_file():
-            tokens = entry.name.split('.')
-            name, extension = '.'.join(tokens[:-1]), tokens[-1]
-            if extension == 'sif':
-                infiles.append(name)
-            elif extension == 'asc':
-                if name[-3:] == '_1D':
-                    outfiles.append(name[:-3])
-                else:
-                    outfiles.append(name[:-3])
-    unp_files = []
-    for fnam in infiles:
-        if not fnam in outfiles:
-            unp_files.append(fnam)
-    return unp_files
 
 #### plotting part
 
@@ -527,13 +509,16 @@ correction_variables = [
                                       'Length': 1,  'Type':'float'}, 
 ]
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
 class SingleTab(AdlerTab):
+    """This tab is central to the ADLER interface.
+    It is the part of the GUI that deals with processing
+    the results of a single measurement. Combining files,
+    offset correction, background subtraction - all these
+    are applied to the data in this tab.
+
+    It is connected to an instance of AdlerCore
+    which performs all the operations on the data.
+    """
     for_preprocess = pyqtSignal(object)
     for_process = pyqtSignal(object)
     for_simplemerge = pyqtSignal(object)
@@ -610,9 +595,16 @@ class SingleTab(AdlerTab):
         self.corethread.start()
     @pyqtSlot()
     def cleanup(self):
+        """This method is called on exit. Before
+        the GUI is destroyed, the thread running in the background
+        (and operating the AdlerCore) should exit.
+        """
         self.corethread.quit()
         self.corethread.wait()
     def make_layout(self):
+        """This method creates and positions
+        all the widgets of the tab.
+        """
         # base = QWidget(self.master)
         # self.base=base
         base = self.base
@@ -719,15 +711,6 @@ class SingleTab(AdlerTab):
         self.boxes_base = boxes_base
         self.flip_buttons()
         return boxes
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
-    def background_launch(self,  core_function,  args =[]):
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
-#    def flip_buttons(self):
-#        for n in range(len(self.button_list)):
-#            self.button_list[n].setEnabled(self.active_buttons[n])
     def save_last_params(self, lastfunction = None):
         try:
             source = open(os.path.join(expanduser("~"),'.ADLERsingle.txt'), 'w')

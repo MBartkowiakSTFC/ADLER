@@ -83,27 +83,6 @@ GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
 
-#### filesystem monitoring part
-def FindUnprocessedFiles(fpath):
-    infiles, outfiles = [], []
-    # with os.scandir(fpath) as it:
-    for entry in os.scandir(fpath):
-        if entry.is_file():
-            tokens = entry.name.split('.')
-            name, extension = '.'.join(tokens[:-1]), tokens[-1]
-            if extension == 'sif':
-                infiles.append(name)
-            elif extension == 'asc':
-                if name[-3:] == '_1D':
-                    outfiles.append(name[:-3])
-                else:
-                    outfiles.append(name[:-3])
-    unp_files = []
-    for fnam in infiles:
-        if not fnam in outfiles:
-            unp_files.append(fnam)
-    return unp_files
-
 #### plotting part
 
 def plot2D(pic, ax, outFile = "", fig = None, text = ''):
@@ -744,12 +723,6 @@ class LogList(QObject):
                         self.table.item(nr, 5).setCheckState(Qt.CheckState.Unchecked)
         self.table.blockSignals(False)
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
 class LogviewerTab(AdlerTab):
     def __init__(self, master,  canvas,  log,  startpath = None):
         super().__init__(master)
@@ -836,8 +809,6 @@ class LogviewerTab(AdlerTab):
         self.button_base = button_base
         self.boxes_base = boxes_base
         return boxes
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
     def takeDataExtended(self,  vardict, errdict):
         try:
             nvals = len(vardict.keys())
@@ -860,10 +831,6 @@ class LogviewerTab(AdlerTab):
                     self.curve_list.add_row(kk, vardict[kk])
             else:
                 self.logger("No variable logs loaded.")
-    def background_launch(self,  core_function,  args =[]):
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
     def logger(self, message):
         now = time.gmtime()
         timestamp = ( "LogViewer "

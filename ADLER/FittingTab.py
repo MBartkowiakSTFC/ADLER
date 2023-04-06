@@ -645,13 +645,6 @@ class ProfileList(QObject):
                 if nc == 8:
                     self.table.item(nr, nc).setText(str(areaerr[en]))
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
-
 class CurveDialog(QDialog):
     values_ready = pyqtSignal(object)
     def __init__(self, parent, filename, appinstance = None):
@@ -1011,12 +1004,6 @@ class FittingTab(AdlerTab):
         # obj, thread = self.thread_locknload(self.core.global_fit)
         # thread.start()
         # self.core.global_fit()
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
-    def background_launch(self,  core_function,  args =[]):
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
     def save_last_params(self, lastfunction = None):
         try:
             source = open(os.path.join(expanduser("~"),'.ADLERpostprocess.txt'), 'w')

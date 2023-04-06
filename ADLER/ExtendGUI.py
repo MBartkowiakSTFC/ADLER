@@ -24,7 +24,7 @@ and other software projects related to PEAXIS.
 import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer, QThread, QMutex,  QSemaphore, Qt, \
                                         QPersistentModelIndex
-from PyQt6.QtWidgets import QProgressBar,  QWidget,  QTextEdit, QVBoxLayout, QCheckBox, \
+from PyQt6.QtWidgets import QProgressBar,  QWidget,  QTextEdit, QVBoxLayout, QCheckBox, QFrame, \
                                                 QGroupBox, QDialog, QLabel, QTabWidget, QGridLayout, \
                                                 QDockWidget, QScrollArea, QSplitter, QSizePolicy, QTableView, QMenu
 from PyQt6.QtGui import QFont, QColor, QPainter, QStandardItemModel, QStandardItem
@@ -242,6 +242,15 @@ class ManyButtons(QWidget):
             newval = b.checkState() == Qt.CheckState.Checked
             self.bvals[n] = newval
         self.new_values.emit(self.bvals)
+
+class QHLine(QFrame):
+    """This widget is just a horizontal separator
+    that can be placed in a GUI.
+    """
+    def __init__(self):
+        super().__init__()
+        self.setFrameShape(QFrame.HLine)
+        self.setFrameShadow(QFrame.Sunken)
 
 class FlexBar(QProgressBar):
     def __init__(self,  parent):
@@ -504,11 +513,6 @@ class AdlerTab(QObject):
     def unblock_interface(self):
         self.boxes_base.setEnabled(True)
         self.button_base.setEnabled(True)
-    def background_launch(self,  core_function,  args =[]):
-        self.oscillator.start()
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
     @pyqtSlot()
     def flip_buttons(self):
         self.unblock_interface()
@@ -640,11 +644,6 @@ class PatternDialog(QDialog):
     def unblock_interface(self):
         self.boxes_base.setEnabled(True)
         self.button_base.setEnabled(True)
-    def background_launch(self,  core_function,  args =[]):
-        self.oscillator.start()
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
     @pyqtSlot()
     def flip_buttons(self):
         self.unblock_interface()
