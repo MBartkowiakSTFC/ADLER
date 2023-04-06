@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # 
-# Copyright (C) Maciej Bartkowiak, 2019-2022
+# Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
 This is the main window of the ADLER GUI.
