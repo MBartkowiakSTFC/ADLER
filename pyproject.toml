@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ADLER"
+version = "4.0.99"
+description = 'ADLER - Augmented Data Loading, Evaluation and Reduction'
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "COPYING"}
+keywords = ["science", "analysis", "x-ray scattering", "CCD camera"]
+authors = [
+  {name = "Maciej Bartkowiak", email = "maciej.bartkowiak@stfc.ac.uk"}
+]
+classifiers = [
+        'Development Status :: 4 - Beta',
+
+        'Intended Audience :: Science/Research',
+
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3 :: Only',
+        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+        'Operating System :: OS Independent'
+]
+
+dependencies = [
+  "numpy",
+  "scipy",
+  "h5py",
+  "astropy",
+  "PyQt6",
+  "pyYAML",
+  "numba"
+]
+
+# dynamic = ["version", "description"]
+
+# [project.urls]
+# homepage = 
+# documentation = 
+# repository = 
+
+[tool.setuptools]
+package-dir = {"ADLER" = "src"}
+
+# [tool.setuptools.packages.find]
+# where = ["src"]
