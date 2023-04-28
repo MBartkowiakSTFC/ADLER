@@ -1,0 +1,17 @@
+*.pyc
+
+.pytest_cache
+
+__pycache__
+
+.DS_Store
+
+<fdopen>
+
+.vscode/
+
+doc/_build/
+
+build/lib/
+
+ADLER.egg-info/
