@@ -16,26 +16,23 @@
 # 
 # Copyright (C) Maciej Bartkowiak, 2019-2023
 
-import math
 import numpy as np
 import os
-import time
-import sys
 import gzip
-import h5py
-from os.path import expanduser
 import copy
 from collections import defaultdict
+
 import yaml
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
 from astropy.io import fits as fits_module
 
 ROAR_LJOKELSOI = 32.518
 
 
+def decompress_array(compdata, shape, dtype):
+    bdata = gzip.decompress(compdata)
+    linedata = np.frombuffer(bdata, dtype=dtype)
+    truedata = linedata.reshape(shape)
+    return truedata
 
 def loadtext_wrapper(fname):
     result = []

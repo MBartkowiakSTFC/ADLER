@@ -17,49 +17,25 @@
 # Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
-The part of the ADLER code responsible for
-the handling of the files and processing the data.
+The part of the ADLER code defining the backend
+for storing and processing of the XAS spectra.
 """
 
-import math
 import numpy as np
 import os
 import time
-import sys
-import gzip
-import h5py
 from os.path import expanduser
 import copy
-from collections import defaultdict
-from numba import jit, prange
-from scipy.sparse import csc_array
 
-import yaml
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
 
-has_voigt = True
-try:
-    from scipy.special import voigt_profile
-except:
-    from scipy.special import wofz
-    has_voigt = False
-from scipy.optimize import leastsq, shgo, minimize
-from scipy.interpolate import interp1d
 from scipy.fftpack import rfft, irfft, fftfreq
-from astropy.io import fits as fits_module
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-# import ctypes
-
-from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QMutex, QDate, QTime
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtWidgets import  QApplication
-from ExtendGUI import CustomThreadpool
-from DataHandling import DataEntry, DataGroup, RixsMeasurement
-
+from ADLERcalc.XasCorrector import XasCorrector
+from ADLERcalc.ioUtils import read_1D_xas, load_only_logs, resource_path, load_and_average_logs,\
+                              WriteEnergyProfile
+from ADLERcalc.spectrumUtils import place_points_in_bins
+from ADLERcalc.arrayUtils import merge2curves_errors, place_data_in_bins
 
 class XasCore(QObject):
     cleared = pyqtSignal()

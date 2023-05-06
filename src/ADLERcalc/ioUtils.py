@@ -21,48 +21,15 @@ The part of the ADLER code responsible for
 the handling of the files and processing the data.
 """
 
-import math
 import numpy as np
 import os
-import time
 import sys
-import gzip
-import h5py
-from os.path import expanduser
-import copy
-from collections import defaultdict
-from numba import jit, prange
-from scipy.sparse import csc_array
 
-import yaml
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
-
-has_voigt = True
-try:
-    from scipy.special import voigt_profile
-except:
-    from scipy.special import wofz
-    has_voigt = False
-from scipy.optimize import leastsq, shgo, minimize
-from scipy.interpolate import interp1d
-from scipy.fftpack import rfft, irfft, fftfreq
+from scipy.fftpack import rfft, irfft
 from astropy.io import fits as fits_module
 
-# import ctypes
-
-from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QMutex, QDate, QTime
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtWidgets import  QApplication
-from ExtendGUI import CustomThreadpool
-from ADLERcalc.DataHandling import DataEntry, DataGroup, RixsMeasurement
-# this is a Windows thing
-# ctypes.windll.kernel32.SetDllDirectoryW('.')
-
-
+from ADLERcalc.imageUtils import RemoveCosmics
+from ADLERcalc.xasUtils import guess_XAS_xaxis
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -96,6 +63,70 @@ def loadtext_wrapper(fname):
                 result.append(textline.strip('\n'))
         source.close()
         return result
+
+
+    
+def simplify_number_range(flist):
+    numbs = []
+    prefs = []
+    for generic, fname in enumerate(flist):
+        fpath, shortname = os.path.split(fname)
+        shortname = ".".join(shortname.split('.')[:-1])
+        #for bad_start in ['Merged_', 'BestMerge_']:
+        #    shortname = shortname.lstrip(bad_start)
+        #for bad_end in ['_1D_deltaE', '_1D']:
+        #    shortname = shortname.rstrip(bad_end)
+        if 'Merged_' in shortname[:7]:
+            shortname = shortname[7:]
+        elif 'BestMerge_'in shortname[:10]:
+            shortname = shortname[10:]
+        if '_1D' in shortname[-3:]:
+            shortname = shortname[:-3]
+        elif '_1D_deltaE' in shortname[-10:]:
+            shortname = shortname[:-10]
+        for n in range(len(shortname)):
+            try:
+                fnumber = int(shortname[n:])
+            except:
+                continue
+            else:
+                prefix = shortname[:n]
+                break
+        try:
+            fnumber
+        except:
+            fnumber = generic+1
+            prefix = shortname
+        numbs.append(fnumber)
+        prefs.append(prefix)
+    prefs = np.array(prefs)
+    numbs = np.array(numbs).astype(np.int)
+    unique_names = np.unique(prefs)
+    textsegs = []
+    for un in unique_names:
+        cname = un
+        aaa = numbs[np.where(prefs == un)]
+        subnums = np.sort(aaa)
+        ranges = []
+        for n,  val in enumerate(subnums):
+            if n == 0:
+                beg = val
+                end = val
+            else:
+                if val == (subnums[n-1] + 1):
+                    end = val
+                else:
+                    ranges.append((beg,  end))
+                    beg = val
+                    end = val
+            if n==(len(subnums)-1):
+                ranges.append((beg,  end))
+        for rr in ranges:
+            if rr[0] == rr[1]:
+                textsegs.append(cname+str(rr[0]))
+            else:
+                textsegs.append(cname+str(rr[0])+'-'+str(rr[1]))
+    return textsegs
 
 #### data processing part
 

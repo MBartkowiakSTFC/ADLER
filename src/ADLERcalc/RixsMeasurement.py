@@ -17,48 +17,38 @@
 # Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
-The part of the ADLER code responsible for
-the handling of the files and processing the data.
+The part of the ADLER code defining the RixsMeasurement class
+which should reliably combine any number of rixs spectra into
+a single final spectrum.
 """
 
-import math
 import numpy as np
 import os
-import time
-import sys
 import gzip
 import h5py
-from os.path import expanduser
-import copy
 from collections import defaultdict
-from numba import jit, prange
-from scipy.sparse import csc_array
 
 import yaml
 try:
-    from yaml import CLoader as Loader, CDumper as Dumper
+    from yaml import CLoader as Loader
 except ImportError:
-    from yaml import Loader, Dumper
+    from yaml import Loader
 
-has_voigt = True
-try:
-    from scipy.special import voigt_profile
-except:
-    from scipy.special import wofz
-    has_voigt = False
-from scipy.optimize import leastsq, shgo, minimize
+from scipy.optimize import leastsq
 from scipy.interpolate import interp1d
-from scipy.fftpack import rfft, irfft, fftfreq
-from astropy.io import fits as fits_module
 
 # import ctypes
 
-from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QMutex, QDate, QTime
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtWidgets import  QApplication
-from ExtendGUI import CustomThreadpool
+from PyQt6.QtCore import QDate, QTime
 
+from ADLERcalc.DataHandling import DataGroup, DataEntry
+from ADLERcalc.ioUtils import WriteProfile, ReadAndor, ReadAsc, ReadFits,\
+                              load_datheader, load_datlog
+from ADLERcalc.fitUtils import polynomial, fit_polynomial, gaussian
+from ADLERcalc.imageUtils import elastic_line, RemoveCosmics, curvature_profile, make_profile
+from ADLERcalc.fitUtils import gauss_denum
+from ADLERcalc.qtObjects import MergeManyCurves, MergeManyArrays
+from ADLERcalc.arrayUtils import rand_mt
 
 class RixsMeasurement():
     def __init__(self, filenames = [], max_threads = 1):

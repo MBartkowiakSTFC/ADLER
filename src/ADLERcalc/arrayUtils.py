@@ -22,48 +22,13 @@ the handling of the files and processing the data.
 """
 
 import math
+
 import numpy as np
-import os
-import time
-import sys
-import gzip
-import h5py
-from os.path import expanduser
-import copy
-from collections import defaultdict
-from numba import jit, prange
-from scipy.sparse import csc_array
+from scipy.optimize import leastsq
 
-import yaml
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
+from ADLERcalc.qtObjects import MergeCurves
+from ADLERcalc.xasUtils import guess_XAS_xaxis
 
-has_voigt = True
-try:
-    from scipy.special import voigt_profile
-except:
-    from scipy.special import wofz
-    has_voigt = False
-from scipy.optimize import leastsq, shgo, minimize
-from scipy.interpolate import interp1d
-from scipy.fftpack import rfft, irfft, fftfreq
-from astropy.io import fits as fits_module
-
-# import ctypes
-
-from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QMutex, QDate, QTime
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtWidgets import  QApplication
-from ExtendGUI import CustomThreadpool
-from DataHandling import DataEntry, DataGroup, RixsMeasurement
-
-# this is a Windows thing
-# ctypes.windll.kernel32.SetDllDirectoryW('.')
-
-# simple mathematical functions are defined here
 try:
     rand_mt = np.random.Generator(np.random.MT19937(np.random.SeedSequence(31337)))
 except:
@@ -405,44 +370,6 @@ def normalising_merge_curves(sources, target):
         # print('acc_n: ', acc_n.min(0), acc_n.max(0), acc_n.mean(0))
     return np.column_stack([xs2,newy/newnorm])
 
-def place_points_in_bins(vallog,  redfac = 1.0):
-    errlog = {}
-    if 'Time' in vallog.keys():
-        sequence = np.argsort(vallog['Time'])
-        for k in vallog.keys():
-            vallog[k] = vallog[k][sequence]
-    if 'TARGET' in vallog.keys():
-        xkey = guess_XAS_xaxis(vallog)
-        if np.all(vallog['TARGET']==0):
-            xkey = 'Step'
-            points = np.sort(np.unique(vallog[xkey]))
-        else:
-            points = np.sort(np.unique(vallog[xkey]))
-        extended_points = np.concatenate([
-            [points[0] - abs(points[1] - points[0])], 
-            points,
-            [points[-1] + abs(points[-1]-points[-2])]
-        ])
-        limits = (extended_points[1:] + extended_points[:-1])/2.0
-        lmin,  lmax,  lnum = limits.min(),  limits.max(), len(limits)
-        new_limits = np.linspace(lmin, lmax,  int(lnum/redfac))
-        points = (new_limits[1:] + new_limits[:-1])/2.0
-        # xkey = guess_XAS_xaxis(vallog)
-        full = vallog[xkey]
-        count = np.zeros(len(points)).astype(np.int)
-        for nn in range(len(points)):
-            count[nn] += len(full[np.where(np.logical_and(full >= new_limits[nn], full< new_limits[nn+1]))])
-        new_limits = np.concatenate([new_limits[:1], new_limits[1:][np.where(count > 0)]])
-        for k in vallog.keys():
-            temp = vallog[k]
-            newone,  newerr = [],  []
-            for counter in range(len(points)):
-                subset = temp[np.where(np.logical_and(full < new_limits[counter+1], full >= new_limits[counter]))]
-                newone.append(subset.mean())
-                newerr.append(subset.std())
-            vallog[k] = np.array(newone)
-            errlog[k] = np.array(newerr)
-    return vallog, errlog
 
 def shgo_profile_offsets(args,  data,  to_match, tpoolin = None, pbarin = None,  maxthreads = 1):
 #    prec30 = np.percentile(to_match[:, 1], 30)
@@ -455,6 +382,11 @@ def shgo_profile_offsets(args,  data,  to_match, tpoolin = None, pbarin = None, 
 #    data[:, 1] += M
     retval = quick_match_profiles(data,  to_match, args[0],  tpoolin, pbarin,  maxthreads)
     return (retval**2).sum()
+
+
+def scaling_fit(args, data, to_match):
+    temp = args[0] * data + args[1]
+    return temp - to_match
 
   
 def quick_match_profiles(data,  to_match, xshift = 0.0,  tpoolin = None, pbarin = None,  maxthreads = 1):

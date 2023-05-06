@@ -1,5 +1,35 @@
 
+#    This file is part of ADLER.
+#
+#    ADLER is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# 
+# Copyright (C) Maciej Bartkowiak, 2019-2023
+
+__doc__ = """
+The part of the ADLER code dealing with processing
+of the RIXS spectra.
+"""
+
+import os
+
 import numpy as np
+
+from ADLERcalc.ioUtils import load_datheader, load_datlog, ReadAndor,\
+                              WriteEnergyProfile, read_1D_curve_extended
+from ADLERcalc.imageUtils import RemoveCosmics
+from ADLERcalc.xasUtils import guess_XAS_xaxis
+from ADLERcalc.arrayUtils import merge2curves
 
 def load_file(fname, bpp, cray, poly = None):
     fpath, shortname = os.path.split(fname)
@@ -95,3 +125,64 @@ def precise_merge(curves, outname = 'best_merge.txt'):
     WriteEnergyProfile(outname, target, [])
     return target
 
+    
+def unit_to_int(text):
+    if 'hanne' in text:
+        return 0
+    elif 'ransfe' in text:
+        return 1
+    elif 'nergy' in text:
+        return 2
+    else:
+        return -1
+
+def int_to_unit(num):
+    if num == 0:
+        return "Detector channels"
+    elif num ==1:
+        return "Energy transfer [eV]"
+    elif num ==2:
+        return "Energy [eV]"
+    else:
+        return "Unknown"
+
+
+
+def place_points_in_bins(vallog,  redfac = 1.0):
+    errlog = {}
+    if 'Time' in vallog.keys():
+        sequence = np.argsort(vallog['Time'])
+        for k in vallog.keys():
+            vallog[k] = vallog[k][sequence]
+    if 'TARGET' in vallog.keys():
+        xkey = guess_XAS_xaxis(vallog)
+        if np.all(vallog['TARGET']==0):
+            xkey = 'Step'
+            points = np.sort(np.unique(vallog[xkey]))
+        else:
+            points = np.sort(np.unique(vallog[xkey]))
+        extended_points = np.concatenate([
+            [points[0] - abs(points[1] - points[0])], 
+            points,
+            [points[-1] + abs(points[-1]-points[-2])]
+        ])
+        limits = (extended_points[1:] + extended_points[:-1])/2.0
+        lmin,  lmax,  lnum = limits.min(),  limits.max(), len(limits)
+        new_limits = np.linspace(lmin, lmax,  int(lnum/redfac))
+        points = (new_limits[1:] + new_limits[:-1])/2.0
+        # xkey = guess_XAS_xaxis(vallog)
+        full = vallog[xkey]
+        count = np.zeros(len(points)).astype(np.int)
+        for nn in range(len(points)):
+            count[nn] += len(full[np.where(np.logical_and(full >= new_limits[nn], full< new_limits[nn+1]))])
+        new_limits = np.concatenate([new_limits[:1], new_limits[1:][np.where(count > 0)]])
+        for k in vallog.keys():
+            temp = vallog[k]
+            newone,  newerr = [],  []
+            for counter in range(len(points)):
+                subset = temp[np.where(np.logical_and(full < new_limits[counter+1], full >= new_limits[counter]))]
+                newone.append(subset.mean())
+                newerr.append(subset.std())
+            vallog[k] = np.array(newone)
+            errlog[k] = np.array(newerr)
+    return vallog, errlog

@@ -18,49 +18,15 @@
 
 __doc__ = """
 The part of the ADLER code responsible for
-the handling of the files and processing the data.
+applying the spectral normalisation to the XAS spectra.
 """
 
-import math
 import numpy as np
-import os
-import time
-import sys
-import gzip
-import h5py
-from os.path import expanduser
-import copy
-from collections import defaultdict
-from numba import jit, prange
-from scipy.sparse import csc_array
-
-import yaml
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
-
-has_voigt = True
-try:
-    from scipy.special import voigt_profile
-except:
-    from scipy.special import wofz
-    has_voigt = False
-from scipy.optimize import leastsq, shgo, minimize
 from scipy.interpolate import interp1d
-from scipy.fftpack import rfft, irfft, fftfreq
-from astropy.io import fits as fits_module
 
-# import ctypes
+from PyQt6.QtCore import  QObject, pyqtSignal, pyqtSlot
 
-from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QMutex, QDate, QTime
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtWidgets import  QApplication
-from ExtendGUI import CustomThreadpool
-from DataHandling import DataEntry, DataGroup, RixsMeasurement
-# this is a Windows thing
-# ctypes.windll.kernel32.SetDllDirectoryW('.')
+from ADLERcalc.ioUtils import read_fluxcorr_curves
 
 class XasCorrector(QObject):
     def __init__(self, parent = None):

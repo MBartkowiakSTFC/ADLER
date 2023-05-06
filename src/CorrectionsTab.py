@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog,   \
                                                 QPushButton,  QVBoxLayout, QHBoxLayout, QFormLayout, QScrollArea
 # from PyQt5 import sip
 from VariablesGUI import VarBox
-from ADLERcalc import AdlerCore
+from ADLERcalc import NewAdlerCore as AdlerCore
 from ExtendGUI import AdlerTab
 
 import numpy as np
