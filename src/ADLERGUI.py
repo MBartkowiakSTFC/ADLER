@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # 
-# Copyright (C) Maciej Bartkowiak, 2019-2022
+# Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
 This is the main window of the ADLER GUI.
@@ -57,7 +57,7 @@ from ExtendGUI import LogBox
 from FileFinder import PeaxisDataModel
 from ExperimentTree import TableView
 
-ADLER_VERSION_STRING = "4.1 from 27.10.2022"
+ADLER_VERSION_STRING = "4.2 from 09.04.2023"
 
 mpl_scale = 1.0
 mpl_figure_scale = 1.0
@@ -191,27 +191,6 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
-
-#### filesystem monitoring part
-def FindUnprocessedFiles(fpath):
-    infiles, outfiles = [], []
-    # with os.scandir(fpath) as it:
-    for entry in os.scandir(fpath):
-        if entry.is_file():
-            tokens = entry.name.split('.')
-            name, extension = '.'.join(tokens[:-1]), tokens[-1]
-            if extension == 'sif':
-                infiles.append(name)
-            elif extension == 'asc':
-                if name[-3:] == '_1D':
-                    outfiles.append(name[:-3])
-                else:
-                    outfiles.append(name[:-3])
-    unp_files = []
-    for fnam in infiles:
-        if not fnam in outfiles:
-            unp_files.append(fnam)
-    return unp_files
 
 #### GUI part
 
@@ -361,12 +340,6 @@ class BetterDict():
         for kk in input_keys:
             self.dict[kk[0]][kk[1]] = copy.deepcopy(newvalues[kk[0]][kk[1]])
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
 class InterfaceTabbed:
     def __init__(self, master, size, param,  appinstance = None, pathdict = {}):
         self.master = master
@@ -430,9 +403,7 @@ class InterfaceTabbed:
         # self.master.resize(size[0], size[1])
         self.master.setCentralWidget(self.tabbar)
         self.master.setFont(GlobFont)
-        # self.master.resized.connect(self.on_resize)
         self.load_last_params()
-        # self.save_last_params()
         self.logger("MAX_THREADS set to " + str(MAX_THREADS))
         self.logger("This value can be adjusted manually in ~/.ADLconfig.txt")
         self.confthread = QThread()
@@ -442,8 +413,6 @@ class InterfaceTabbed:
         self.master.destroyed.connect(self.confthread.quit)
         self.conf_writer.moveToThread(self.confthread)
         self.confthread.start()
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
     def MakeFileTab(self):
         tab1 = QWidget(self.tabbar)
         # here comes the new layout
@@ -538,23 +507,6 @@ class InterfaceTabbed:
         self.tabview.triggerList()
         self.tabbar.setCurrentIndex(2)
         self.tabview.resizeColumnsToContents()
-    def save_last_params(self, lastfunction = None):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLconfig.txt'), 'w')
-        except:
-            return None
-        else:
-            source.write('Lastdir: '+str(self.temp_path) + '\n')
-            source.write('Lastfile: '+str(self.temp_name) + '\n')
-            for kk in self.input_keys:
-                source.write(" ".join([str(u) for u in [kk[0], kk[1], self.params[kk[0]][kk[1]]]]) + '\n')
-            if not lastfunction == None:
-                source.write('Last function called: ' + str(lastfunction) + '\n')
-            source.write('Matplotlib_scale: ' + str(mpl_scale) + '\n')
-            source.write('Matplotlib_figure_scale: ' + str(mpl_figure_scale) + '\n')
-            source.write('Font_scale: ' + str(font_scale) + '\n')
-            source.write('MAX_THREADS: ' + str(self.max_threads) + '\n')
-            source.close()
     def load_last_params(self):
         try:
             source = open(os.path.join(expanduser("~"),'.ADLconfig.txt'), 'r')
@@ -618,25 +570,6 @@ class InterfaceTabbed:
         layout.addWidget(figAgg)
         layout.addWidget(toolbar)
         return canvas, figure, layout
-    def MakeCanvasExtended(self, parent):
-        mdpi, winch, hinch = 75, 9.0*mpl_figure_scale, 7.0*mpl_figure_scale
-        canvas = QWidget(parent)
-        layout = QVBoxLayout(canvas)
-        figure = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg = FigureCanvasQTAgg(figure)
-        figAgg.setParent(canvas)
-        figAgg.setSizePolicy(QSizePolicy.Policy.Minimum,QSizePolicy.Policy.Minimum)
-        figAgg.updateGeometry()
-        toolbar = NavigationToolbar2QTAgg(figAgg, canvas)
-        toolbar.update()
-        layout.addWidget(figAgg)
-        layout.addWidget(toolbar)
-        figure2 = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg2 = FigureCanvasQTAgg(figure2)
-        figAgg2.setParent(parent)
-        figAgg2.setSizePolicy(QSizePolicy.Policy.Minimum,QSizePolicy.Policy.Minimum)
-        figAgg2.updateGeometry()
-        return canvas, figure, layout, figure2, figAgg2
     def MakeButton(self, parent, text, function, tooltip = ""):
         button = QPushButton(text, parent)
         if tooltip:

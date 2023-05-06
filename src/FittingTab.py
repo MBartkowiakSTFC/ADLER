@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # 
-# Copyright (C) Maciej Bartkowiak, 2019-2022
+# Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
 The ADLER tab for fitting arbitrary curves.
@@ -645,13 +645,6 @@ class ProfileList(QObject):
                 if nc == 8:
                     self.table.item(nr, nc).setText(str(areaerr[en]))
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
-
 class CurveDialog(QDialog):
     values_ready = pyqtSignal(object)
     def __init__(self, parent, filename, appinstance = None):
@@ -1011,43 +1004,6 @@ class FittingTab(AdlerTab):
         # obj, thread = self.thread_locknload(self.core.global_fit)
         # thread.start()
         # self.core.global_fit()
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
-    def background_launch(self,  core_function,  args =[]):
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
-    def save_last_params(self, lastfunction = None):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLERpostprocess.txt'), 'w')
-        except:
-            return None
-        else:
-            source.write('Lastdir: '+str(self.core.temp_path) + '\n')
-            source.write('Lastfile: '+str(self.temp_name) + '\n')
-            for kk in self.input_keys:
-                source.write(" ".join([str(u) for u in [kk[0], kk[1], self.params[kk[0]][kk[1]]]]) + '\n')
-            if not lastfunction == None:
-                source.write('Last function called: ' + str(lastfunction) + '\n')
-            source.write('Matplotlib_scale: ' + str(mpl_scale) + '\n')
-            source.write('Matplotlib_figure_scale: ' + str(mpl_figure_scale) + '\n')
-            source.write('Font_scale: ' + str(font_scale) + '\n')
-            source.close()
-    def load_last_params(self):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLERpostprocess.txt'), 'r')
-        except:
-            return None
-        else:
-            for line in source:
-                toks = line.split()
-                if len(toks) > 1:
-                    if toks[0] == 'Lastdir:':
-                        try:
-                            self.core.temp_path = toks[1]
-                        except:
-                            pass
-            source.close()
     def logger(self, message):
         now = time.gmtime()
         timestamp = ("-".join([str(tx) for tx in [now.tm_mday, now.tm_mon, now.tm_year]])
@@ -1055,20 +1011,6 @@ class FittingTab(AdlerTab):
         self.log.setReadOnly(False)
         self.log.append("Fitting :" + timestamp + message)
         self.log.setReadOnly(True)
-    def MakeCanvas(self, parent):
-        mdpi, winch, hinch = 75, 9.0*mpl_figure_scale, 7.0*mpl_figure_scale
-        canvas = QWidget(parent)
-        layout = QVBoxLayout(canvas)
-        figure = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg = FigureCanvasQTAgg(figure)
-        figAgg.setParent(canvas)
-        figAgg.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
-        figAgg.updateGeometry()
-        toolbar = NavigationToolbar2QTAgg(figAgg, canvas)
-        toolbar.update()
-        layout.addWidget(figAgg)
-        layout.addWidget(toolbar)
-        return canvas, figure, layout
     def MakeButton(self, parent, text, function, tooltip = ""):
         button = QPushButton(text, parent)
         if tooltip:

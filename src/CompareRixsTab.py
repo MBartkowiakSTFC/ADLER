@@ -14,14 +14,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # 
-# Copyright (C) Maciej Bartkowiak, 2019-2022
+# Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
 This tab of the ADLER GUI allows the users to load 1D curves,
 and compare them quickly.
 """
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot,  QSize,  QThread, QModelIndex
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot,  QSize,  QThread, QModelIndex, QSortFilterProxyModel
 from PyQt6.QtCore import Qt
 # from PyQt6.QtCore import Qt.ItemIsEnabled as ItemIsEnabled
 # from PyQt6.QtCore import Qt.Checked as Qt.Checked
@@ -32,8 +32,9 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog, QTableVie
                                                 QDockWidget, QScrollArea, QSplitter, QStackedWidget, \
                                                 QAbstractItemView, QMenu, QApplication
 # from PyQt6 import sip
-from VariablesGUI import VarBox
-from ADLERcalc import SimpleCore, unit_to_int, int_to_unit
+from VariablesGUI import VarBox, CheckGroup
+from ADLERcalc import unit_to_int, int_to_unit, RixsMeasurement
+from ADLERcalc import NewSimpleCore as SimpleCore
 from ExtendGUI import AdlerTab
 
 
@@ -89,81 +90,7 @@ GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
 
-#### filesystem monitoring part
-def FindUnprocessedFiles(fpath):
-    infiles, outfiles = [], []
-    # with os.scandir(fpath) as it:
-    for entry in os.scandir(fpath):
-        if entry.is_file():
-            tokens = entry.name.split('.')
-            name, extension = '.'.join(tokens[:-1]), tokens[-1]
-            if extension == 'sif':
-                infiles.append(name)
-            elif extension == 'asc':
-                if name[-3:] == '_1D':
-                    outfiles.append(name[:-3])
-                else:
-                    outfiles.append(name[:-3])
-    unp_files = []
-    for fnam in infiles:
-        if not fnam in outfiles:
-            unp_files.append(fnam)
-    return unp_files
-
 #### plotting part
-
-def plot2D(pic, ax, outFile = "", fig = None, text = ''):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    print(pic.shape, pic.min(), pic.max())
-    axes = fig.add_subplot(111)
-    axlabels = ['Pixels (horizontal)', 'Pixels (vertical)']
-    topval = np.nan_to_num(pic).max()
-    if topval == 0.0:
-        topval = 1.0
-    xxx = axes.imshow(np.nan_to_num(pic)[::-1,:], extent = [ax[1][0], ax[1][-1],
-                                        ax[0][0], ax[0][-1]], interpolation = 'none',
-                                        cmap = mpl.get_cmap('OrRd'), aspect = 'auto',
-                                        vmin = np.percentile(pic, 20), vmax = np.percentile(pic, 90)
-                                        # vmin = 1e-3, vmax = 1.0
-                                        )
-    cb = mpl.colorbar(xxx, ax = xxx.axes, format = '%.1e', pad = 0.02)
-    cb.set_label(labels[0])
-    # cb.set_clim(-1, 2.0)
-    # xxx.autoscale()
-    # axes.contour(np.nan_to_num(pic), # [1e-3*np.nan_to_num(pic).max()], 
-    #                            extent = [ax[0][0], ax[0][-1], ax[1][0], ax[1][-1]],
-    #                            aspect = 'auto', linestyles = 'solid', linewidths = 1.0)
-    axes.grid(True)
-    axes.set_xlabel(axlabels[0])
-    axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    axtextf = fig.add_axes([0.20, 0.11, 0.10, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        fig.canvas.draw()
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
 
 def plot1D(pic, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= [], 
                   legend_pos = 0):
@@ -516,9 +443,6 @@ def plot2D_sliders(pics, ax, outFile = "", fig = None, text = '', interp = 'none
 #### GUI part
 
 loading_variables = [
-{'Name': 'Spectrum cutoff',  'Unit':'pixel',  'Value':np.array([0, 2048]),  'Key' : 'cuts', 
-                               'MinValue':np.array([-1e5, -1e5]),  'MaxValue':np.array([1e5, 1e5]),  'Length': 2,  'Type':'int',
-                               'Comment':'Each curve plotted in this tab will be truncated to the x limits specified here.'}, 
 {'Name': 'Reduction factor',  'Unit':'N/A',  'Value':1.0, 'Key' : 'redfac', 
                                       'MinValue':0.25,
                                       'MaxValue':10.0,
@@ -551,290 +475,25 @@ plotting_variables = [
 class BetterTable(QTableView):
     def __init__(self, master, datamodel = None):
         super().__init__(master)
-        self.datamodel = datamodel
+        # self.datamodel = datamodel
     def contextMenuEvent(self, event):
         menu = QMenu(self)
         self.clickedPos = event.pos()
         self.populateMenu(menu)
-        menu.exec_(event.globalPos())
+        menu.exec(event.globalPos())
     def populateMenu(self, menu):
+        try:
+            temp = self.model().sourceModel()
+        except:
+            temp = self.model()
         Action = menu.addAction("Copy as Text")
-        Action.triggered.connect(self.datamodel.textToClipboard)
+        Action.triggered.connect(temp.textToClipboard)
         Action = menu.addAction("Spreadsheet-friendly copy")
-        Action.triggered.connect(self.datamodel.excelToClipboard)
+        Action.triggered.connect(temp.excelToClipboard)
 
-tabnames = ['Filename', 'Ei (eV)', 'Xlimits', 'Xunits', 'Temperature (K)', '2 theta (deg)',  'Q (1/A)',  'Use it?', 'FWHM', '+/- dFWHM',  'Int.',  '+/- dInt.',  'Centre',  '+/- dCentre']
-class ProfileList(QStandardItemModel):
-    gotvals = pyqtSignal()
-    needanupdate = pyqtSignal()
-    def __init__(self, master,  nrows =1,  ncolumns = len(tabnames)):
-        super().__init__(master)
-        self.master = master
-        self.name = []
-        self.Ei = []
-        self.temperature = []
-        self.Q = []
-        self.twotheta = []
-        self.Xmin = []
-        self.Xmax = []
-        self.Xunits = []
-        self.useit = []
-        self.col_count = ncolumns
-        self.busy = True
-        self.setHorizontalHeaderLabels(tabnames)
-        self.table = BetterTable(self.master, self)
-        self.table.setSizePolicy(QSizePolicy.Policy.MinimumExpanding,QSizePolicy.Policy.MinimumExpanding)
-        # for n in range(self.table.columnCount()):
-        #     self.table.setItem(0, n, QTableWidgetItem(tabnames[n]))
-        self.itemChanged.connect(self.update_values)
-        topheader = self.table.horizontalHeader()
-        topheader.sectionClicked.connect(self.update_ticks)
-        # self.table.cellChanged.connect(self.update_ticks)
-        self.table.setModel(self)
-        self.table.resizeColumnsToContents()
-        self.table.setSortingEnabled(True)
-        self.table.setDragEnabled(True)
-        self.table.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
-        self.table.horizontalHeader().setSectionsMovable(True)
-        self.table.horizontalHeader().setDragEnabled(True)
-        self.table.horizontalHeader().setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self.table.verticalHeader().setSectionsMovable(True)
-        self.table.verticalHeader().setDragEnabled(True)
-        self.table.verticalHeader().setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self.table.show()
-        # self.table.clicked.connect(self.update_ticks)
-        # self.needanupdate.connect(self.redraw_table)
-    @pyqtSlot()
-    def textToClipboard(self):
-        # print("This should copy the table to clipboard.")
-        result = ""
-        rows = []
-        for nr in range(self.rowCount()):
-            row = []
-            for nc in range(self.columnCount()):
-                temptext = self.item(nr, nc).text()
-                row.append(temptext)
-            rows.append(row)
-        for r in rows:
-            onerow = " ".join(r)
-            result += onerow + '\n'
-        clip = QApplication.clipboard()
-        clip.setText(result)
-    @pyqtSlot()
-    def excelToClipboard(self):
-        # print("This should copy the table to clipboard in a format suitable for a spreadsheet.")
-        result = ""
-        rows = []
-        for nr in range(self.rowCount()):
-            row = []
-            for nc in range(self.columnCount()):
-                temptext = self.item(nr, nc).text()
-                row.append(temptext)
-            rows.append(row)
-        for r in rows:
-            onerow = "\t".join(r)
-            result += onerow + '\n'
-        clip = QApplication.clipboard()
-        clip.setText(result)
-    def add_row(self, data):
-        self.busy = True
-        self.table.blockSignals(True)
-        rowitems = []
-        lastnit = len(data)
-        for nit, dud in enumerate(data):
-            d = str(dud)
-            rowitems.append(QStandardItem(str(d).strip("()[]'")))
-            if nit == 0:
-                try:
-                    self.name.append(d.strip("()[]'"))
-                except:
-                    self.name.append("The Nameless One")
-            if nit == 1:
-                try:
-                    self.Ei.append(float(d.strip("()[]'")))
-                except:
-                    self.Ei.append(-1.0)
-            elif nit == 2:
-                try:
-                    vals = [float(tok.strip("()[]'")) for tok in d.split(',')]
-                except:
-                    vals = [-1.0, -1.0]
-                self.Xmin.append(vals[0])
-                self.Xmax.append(vals[1])
-            elif nit ==3:
-                self.Xunits.append(unit_to_int(d))
-            elif nit == 4:
-                self.temperature.append(float(d.strip("()[]'")))
-            elif nit == 5:
-                self.twotheta.append(float(d.strip("()[]'")))
-            elif nit == 6:
-                self.Q.append(float(d.strip("()[]'")))
-        chkBoxItem = QStandardItem()
-        chkBoxItem.setCheckable(True)
-        chkBoxItem.setCheckState(Qt.CheckState.Checked)
-        rowitems.append(chkBoxItem)
-        self.useit.append(True)
-        # lastrow = self.table.rowCount()
-        # self.table.insertRow(lastrow)
-        # for n, ri in enumerate(rowitems):
-        #     self.table.setItem(lastrow, n, ri)
-        for nit in range(lastnit, self.col_count):
-            rowitems.append(QStandardItem(str("")))
-        self.appendRow(rowitems)
-        self.busy = False
-        self.table.blockSignals(False)
-        self.needanupdate.emit()
-    @pyqtSlot()
-    def clear_table(self):
-        self.name = []
-        self.Ei = []
-        self.Xmin = []
-        self.Xmax = []
-        self.Xunits = []
-        self.temperature = []
-        self.Q = []
-        self.twotheta = []
-        self.useit = []
-        for nr in range(0, self.rowCount())[::-1]:
-            self.removeRows(nr, 1)
-        self.gotvals.emit()
-    def return_values(self):
-        final = []            
-        for nr in range(0,  self.rowCount()):
-            for nc in [7]:
-                self.useit[nr] = (self.item(nr, nc).checkState() == Qt.CheckState.Checked)
-        for nr in range(len(self.useit)):
-            if self.useit[nr]:
-                rowdata = [nr]
-                rowdata += [self.Ei[nr],  self.Xmin[nr],  self.Xmax[nr],  self.Xunits[nr],  self.name[nr], 
-                                  self.temperature[nr], self.twotheta[nr], self.Q[nr]]
-                final.append(rowdata)
-        return final
-    @pyqtSlot(QStandardItem)
-    def update_values(self,  theItem = None):
-        if self.busy:
-            return None
-        self.busy = True
-        for nr in range(0,  self.rowCount()):
-            for nc in range(0, 8):
-                if nc == 0:
-                    try:
-                        self.name[nr] = self.item(nr, nc).text().strip("()[]'")
-                    except:
-                        continue
-                if nc == 1:
-                    try:
-                        self.Ei[nr] = float(self.item(nr, nc).text().strip("()[]'"))
-                    except:
-                        continue
-                elif nc == 2:
-                    try:
-                        vals = [float(tok.strip("()[]'")) for tok in self.item(nr, nc).text().split(',')]
-                    except:
-                        continue
-                    self.Xmin[nr] = vals[0]
-                    self.Xmax[nr] = vals[1]
-                elif nc ==3:
-                    self.Xunits[nr] = unit_to_int(self.item(nr, nc).text())
-                elif nc == 4:
-                    self.temperature[nr] = float(self.item(nr, nc).text().strip("()[]'"))
-                elif nc == 5:
-                    self.twotheta[nr] = float(self.item(nr, nc).text().strip("()[]'"))
-                elif nc == 6:
-                    self.Q[nr] = float(self.item(nr, nc).text().strip("()[]'"))
-                elif nc == 7:
-                    # # tempdebug = self.table.item(nr, 4).checkState()
-                    self.useit[nr] = (self.item(nr, nc).checkState() == Qt.CheckState.Checked)
-                    # self.useit[nr-1] = not self.useit[nr-1]
-        self.busy = False
-        # self.needanupdate.emit()
-        self.gotvals.emit()
-    @pyqtSlot(int)
-    def update_ticks(self, Index = -1):
-        if self.busy:
-            return None
-        self.busy = True
-        # column = Index.column()
-        # if column == 7:
-        for nr in range(0,  self.rowCount()):
-            for nc in [7]:
-                self.useit[nr] = (self.item(nr, nc).checkState() == Qt.CheckState.Checked)
-        self.busy = False
-        self.needanupdate.emit()
-        self.gotvals.emit()
-    @pyqtSlot()
-    def redraw_table(self):
-        if self.busy:
-            return None
-        self.busy = True
-        self.table.blockSignals(True)
-        for nr in range(1,  self.table.rowCount()):
-            for nc in range(0, 8):
-                if nc == 0:
-                    self.table.item(nr, nc).setText(str(self.name[nr-1]))
-                if nc == 1:
-                    self.table.item(nr, nc).setText(str(self.Ei[nr-1]))
-                elif nc == 2:
-                    temp = ",".join([str(x) for x in [self.Xmin[nr-1], self.Xmax[nr-1]]])
-                    self.table.item(nr, nc).setText(temp)
-                elif nc ==3:
-                    self.table.item(nr, nc).setText(int_to_unit(self.Xunits[nr-1]))
-                if nc == 4:
-                    self.table.item(nr, nc).setText(str(self.temperature[nr-1]))
-                if nc == 5:
-                    self.table.item(nr, nc).setText(str(self.twotheta[nr-1]))
-                if nc == 6:
-                    self.table.item(nr, nc).setText(str(self.Q[nr-1]))
-                elif nc ==7:
-                    if self.useit[nr-1]:
-                        self.table.item(nr, 7).setCheckState(Qt.CheckState.Checked)
-                    else:
-                        self.table.item(nr, 7).setCheckState(Qt.CheckState.Unchecked)
-        self.busy = False
-        self.table.blockSignals(False)
-    def assign_fitparams(self, fitparams):
-        nums, width,  widtherr,  area,  areaerr,  centre,  centreerr = fitparams
-        for en,  realnum in enumerate(nums):
-            nr = realnum
-            for nc in range(8, 14):
-                if nc == 8:
-                    try:
-                        self.item(nr, nc).setText(str(width[en]))
-                    except:
-                        self.item(nr, nc).setText("")
-                if nc == 9:
-                    try:
-                        self.item(nr, nc).setText(str(widtherr[en]))
-                    except:
-                        self.item(nr, nc).setText("")
-                if nc == 10:
-                    try:
-                        self.item(nr, nc).setText(str(area[en]))
-                    except:
-                        self.item(nr, nc).setText("")
-                if nc == 11:
-                    try:
-                        self.item(nr, nc).setText(str(areaerr[en]))
-                    except:
-                        self.item(nr, nc).setText("")
-                if nc == 12:
-                    try:
-                        self.item(nr, nc).setText(str(centre[en]))
-                    except:
-                        self.item(nr, nc).setText("")
-                if nc == 13:
-                    try:
-                        self.item(nr, nc).setText(str(centreerr[en]))
-                    except:
-                        self.item(nr, nc).setText("")
+tabnames = ['Filename', 'Ei (eV)', 'Temperature (K)', '2 theta (deg)',  'Q (1/A)',  'Use it?', 'FWHM', '+/- dFWHM',  'Int.',  '+/- dInt.',  'Centre',  '+/- dCentre']
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
-class PostprocessingTab(AdlerTab):
+class NewPostprocessingTab(AdlerTab):
     for_loading = pyqtSignal(object)
     clear = pyqtSignal()
     def __init__(self, master,  canvas,  log,  mthreads = 1, startpath = None,  app = None):
@@ -850,31 +509,68 @@ class PostprocessingTab(AdlerTab):
         self.figsize1, self.figsize2 = self.figure.get_size_inches()
         self.params = [(loading_variables, "File Loading"),  (line_variables,  "Elastic Line"),
                                (plotting_variables,  "Plotting")]
-        self.profile_list = ProfileList(self.base)
+        # self.profile_list = ProfileList(self.base)
         self.core = SimpleCore(None,  None,  self.log,  max_threads = mthreads, 
-                                        table = self.profile_list,  startpath = startpath, 
+                                        table_headers = tabnames,  startpath = startpath, 
                                         progress_bar = self.progbar)
+        normlist = self.core.possible_normalisation_choices()
+        self.profile_table = BetterTable(self.master, self.core)
         self.currentpath = startpath
-        self.boxes = self.make_layout()
+        self.boxes = self.make_layout(normlist)
         self.core.assign_boxes(self.boxes)
         tlist = self.core.possible_rixsmap_axes()
+        tlist2 = self.core.possible_rixsmap_axes2()
+        xlist = self.core.possible_plot_axes()
         newlist = []
         for old in tlist:
             newlist.append("RIXS map X axis: " + old)
+        newlist2 = []
+        for old in tlist2:
+            newlist2.append("RIXS map Y axis: " + old)
+        newlist3 = []
+        for old in xlist:
+            newlist3.append("1D plot X axis: " + old)
         self.combo.addItems(newlist)
+        self.combo2.addItems(newlist2)
+        self.combo3.addItems(newlist3)
         self.parnames = []
         self.pardict = {}
         self.filelist = None
         # self.destroyed.connect(self.cleanup)
-        self.profile_list.gotvals.connect(self.core.take_table_values)
-        self.core.cleared.connect(self.profile_list.clear_table)
-        self.core.fileparams.connect(self.finish_loading)
+        self.checkers.new_values.connect(self.core.normalisation_flags)
+        # self.profile_list.gotvals.connect(self.core.take_table_values)
+        # self.core.cleared.connect(self.profile_list.clear_table)        
+        self.profile_table.setSizePolicy(QSizePolicy.Policy.MinimumExpanding,QSizePolicy.Policy.MinimumExpanding)
+        # for n in range(self.table.columnCount()):
+        #     self.table.setItem(0, n, QTableWidgetItem(tabnames[n]))
+        # self.itemChanged.connect(self.update_values)
+        topheader = self.profile_table.horizontalHeader()
+        # topheader.sectionClicked.connect(self.core.update_ticks)
+        # self.table.cellChanged.connect(self.update_ticks)
+        self.profile_sorter = QSortFilterProxyModel()
+        self.profile_sorter.setSourceModel(self.core)
+        self.profile_table.setModel(self.profile_sorter)
+        self.profile_table.resizeColumnsToContents()
+        self.profile_table.setSortingEnabled(True)
+        self.profile_table.setDragEnabled(True)
+        self.profile_table.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
+        self.profile_table.horizontalHeader().setSectionsMovable(True)
+        self.profile_table.horizontalHeader().setDragEnabled(True)
+        self.profile_table.horizontalHeader().setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.profile_table.verticalHeader().setSectionsMovable(True)
+        self.profile_table.verticalHeader().setDragEnabled(True)
+        self.profile_table.verticalHeader().setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.profile_table.show()
+        self.core.loaded.connect(self.flip_buttons)
+        self.core.loaded.connect(self.profile_table.resizeColumnsToContents)
         self.core.finished_fitting.connect(self.showfits)
         self.core.finished_overplot.connect(self.showmulti)
         self.core.finished_rixsmap.connect(self.showrixs)
         self.core.finished_merge.connect(self.add_mergedcurve)
         self.core.finished_filter.connect(self.add_filteredcurves)
         self.combo.currentIndexChanged.connect(self.core.rixsmap_axis)
+        self.combo2.currentIndexChanged.connect(self.core.rixsmap_axis_Y)
+        self.combo3.currentIndexChanged.connect(self.core.plot_axis)
         self.flip_buttons()
         #
         self.for_loading.connect(self.core.load_profiles)
@@ -897,7 +593,7 @@ class PostprocessingTab(AdlerTab):
     def cleanup(self):
         self.corethread.quit()
         self.corethread.wait()
-    def make_layout(self):
+    def make_layout(self, normlist = []):
         col1 = "background-color:rgb(30,180,20)"
         col2 = "background-color:rgb(0,210,210)"
         col3 = "background-color:rgb(50,150,250)"
@@ -963,11 +659,23 @@ class PostprocessingTab(AdlerTab):
         button_layout.setVerticalSpacing(2)
         button_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         boxes_layout.addWidget(button_base)
-        boxes_layout.addWidget(self.profile_list.table)
+        boxes_layout.addWidget(self.profile_table)
         # self.progbar = QProgressBar(base)
         boxes = []
+        self.combo3 = QComboBox(boxes_base)
+        boxes_layout.addWidget(self.combo3)
         self.combo = QComboBox(boxes_base)
         boxes_layout.addWidget(self.combo)
+        self.combo2 = QComboBox(boxes_base)
+        boxes_layout.addWidget(self.combo2)
+        temp = []
+        for nit in normlist:
+            temp.append((nit, 0))
+        self.checkers = CheckGroup(self.base,
+                              setup_variables= temp, 
+                              gname="Divide counts by:", 
+                              max_items_per_row = 3)
+        boxes_layout.addWidget(self.checkers.base)
         for el in self.params:
             temp = VarBox(boxes_base, el[0],  el[1])
             boxes.append(temp)
@@ -990,56 +698,19 @@ class PostprocessingTab(AdlerTab):
         return boxes
     @pyqtSlot()
     def wrapper_autofit_many(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         self.core.autofit_many()
     @pyqtSlot()
     def wrapper_fit_many(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         self.core.fit_many()
     @pyqtSlot()
     def wrapper_multiplot(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         self.core.multiplot()
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
-    def background_launch(self,  core_function,  args =[]):
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
-    def save_last_params(self, lastfunction = None):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLERpostprocess.txt'), 'w')
-        except:
-            return None
-        else:
-            source.write('Lastdir: '+str(self.core.temp_path) + '\n')
-            source.write('Lastfile: '+str(self.temp_name) + '\n')
-            for kk in self.input_keys:
-                source.write(" ".join([str(u) for u in [kk[0], kk[1], self.params[kk[0]][kk[1]]]]) + '\n')
-            if not lastfunction == None:
-                source.write('Last function called: ' + str(lastfunction) + '\n')
-            source.write('Matplotlib_scale: ' + str(mpl_scale) + '\n')
-            source.write('Matplotlib_figure_scale: ' + str(mpl_figure_scale) + '\n')
-            source.write('Font_scale: ' + str(font_scale) + '\n')
-            source.close()
-    def load_last_params(self):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLERpostprocess.txt'), 'r')
-        except:
-            return None
-        else:
-            for line in source:
-                toks = line.split()
-                if len(toks) > 1:
-                    if toks[0] == 'Lastdir:':
-                        try:
-                            self.core.temp_path = toks[1]
-                        except:
-                            pass
-            source.close()
     def load_params_from_file(self):
         result, ftype = QFileDialog.getOpenFileName(self.master, 'Load ADLER parameters from output file header.', self.currentpath,
-           'ADLER 1D file (*.txt);;ADLER 1D file, server mode (*.asc);;All files (*.*)')
+           'ADLER 1D file (*.txt);;ADLER YAML file (*.yaml);;All files (*.*)')
         if result == None:
             self.logger('No valid file chosen, parameters not loaded.')
         else:
@@ -1109,20 +780,6 @@ class PostprocessingTab(AdlerTab):
         self.log.setReadOnly(False)
         self.log.append("Postprocessing :" + timestamp + message)
         self.log.setReadOnly(True)
-    def MakeCanvas(self, parent):
-        mdpi, winch, hinch = 75, 9.0*mpl_figure_scale, 7.0*mpl_figure_scale
-        canvas = QWidget(parent)
-        layout = QVBoxLayout(canvas)
-        figure = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg = FigureCanvasQTAgg(figure)
-        figAgg.setParent(canvas)
-        figAgg.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
-        figAgg.updateGeometry()
-        toolbar = NavigationToolbar2QTAgg(figAgg, canvas)
-        toolbar.update()
-        layout.addWidget(figAgg)
-        layout.addWidget(toolbar)
-        return canvas, figure, layout
     def MakeButton(self, parent, text, function, tooltip = ""):
         button = QPushButton(text, parent)
         if tooltip:
@@ -1135,7 +792,7 @@ class PostprocessingTab(AdlerTab):
         return button
     def load_profile_button(self):
         result, ftype = QFileDialog.getOpenFileNames(self.master, 'Load data from the Andor camera file:', self.currentpath,
-               'ADLER 1D output file (*.txt);;All files (*.*)')
+               'ADLER 1D output file (*.txt);;ADLER YAML file (*.yaml);;All files (*.*)')
         if len(result) > 0:
             newpath, shortname = os.path.split(result[0])
             self.conf_update.emit({'PATH_postprocessing': newpath})
@@ -1143,35 +800,24 @@ class PostprocessingTab(AdlerTab):
             self.block_interface()
             self.active_buttons[:] = 1
             self.for_loading.emit(result)
-    @pyqtSlot(object)
-    def finish_loading(self,  parlist):
-        snames, profiles, envals, units, pardicts = parlist
-        for n in range(len(snames)):
-            xmin, xmax = round(profiles[n][0, 0], 2),  round(profiles[n][-1, 0], 2)
-            self.profile_list.add_row([snames[n], envals[n], [xmin, xmax],  units[n],
-                                             pardicts[n]['temperature'], pardicts[n]['2theta'], pardicts[n]['Q']])
-        self.profile_list.update_values()
-        # self.profile_list.redraw_table()
-        self.flip_buttons()
     @pyqtSlot()
     def add_mergedcurve(self):
-        newcurve = self.core.merged_curve.copy()
-        xmin, xmax = round(newcurve[0, 0], 2),  round(newcurve[-1, 0], 2)
-        self.profile_list.add_row(["Merged data", self.core.merged_energy, [xmin, xmax],  self.core.merged_units, 
-                                        self.core.merged_temperature,  self.core.merged_2theta, self.core.merged_q])
-        self.profile_list.update_values()
-        # self.profile_list.redraw_table()
+        # newcurve = self.core.merged_curve.copy()
+        # xmin, xmax = round(newcurve[0, 0], 2),  round(newcurve[-1, 0], 2)
+        # self.profile_list.add_row(["Merged data", self.core.merged_energy,
+        #                                 self.core.merged_temperature,  self.core.merged_2theta, self.core.merged_q])
+        # self.profile_list.update_values()
+        # # self.profile_list.redraw_table()
         self.flip_buttons()
     @pyqtSlot()
     def add_filteredcurves(self):
         for num, curve in enumerate(self.core.filter_curves):
             newcurve = curve.copy()
             xmin, xmax = round(newcurve[0, 0], 2),  round(newcurve[-1, 0], 2)
-            self.profile_list.add_row([self.core.filter_labels[num], self.core.filter_energies[num],
-                                             [xmin, xmax],  self.core.filter_units[num], 
-                                            self.core.filter_temperatures[num], self.core.filter_2thetas[num], self.core.filter_qs[num]])
-        self.profile_list.update_values()
-        # self.profile_list.redraw_table()
+            # self.profile_list.add_row([self.core.filter_labels[num], self.core.filter_energies[num],
+            #                                 self.core.filter_temperatures[num], self.core.filter_2thetas[num], self.core.filter_qs[num]])
+        # self.profile_list.update_values()
+        # # self.profile_list.redraw_table()
         self.flip_buttons()
     def clear_profile_button(self):
         self.block_interface()
@@ -1210,7 +856,7 @@ class PostprocessingTab(AdlerTab):
     def save_merged_curve(self):
         result, ftype = QFileDialog.getSaveFileName(self.master, 'Save the merged profile to a text file:', self.currentpath,
                'ADLER 1D output file (*.txt);;All files (*.*)')
-        if result is None:
+        if len(result) < 1:
             self.logger("No file name specified; the curve has not been saved.")
         else:
             newpath, shortname = os.path.split(result)
@@ -1222,7 +868,7 @@ class PostprocessingTab(AdlerTab):
     def save_ticked_curve(self):
         result = QFileDialog.getExistingDirectory(self.master,
                                     'Save the selected profiles to text files:', self.currentpath)
-        if result is None:
+        if len(result) < 1:
             self.logger("No file name specified; the curve has not been saved.")
         else:
             result = result + '/'
@@ -1233,13 +879,13 @@ class PostprocessingTab(AdlerTab):
             if retcode is not None:
                 self.logger("The curves have been saved to " + str(result))
     def rixs_map(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         obj, thread = self.thread_locknload(self.core.rixsmap)
         thread.finished.connect(self.showrixs)
         thread.start()
     @pyqtSlot()
     def showrixs(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         # self.figure.set_size_inches(self.figsize1, self.figsize2)
         if self.core.rixs_worked:
             plot2D_sliders(self.core.map2D[0], self.core.map2Dplotax, fig = self.figure, 
@@ -1248,13 +894,13 @@ class PostprocessingTab(AdlerTab):
         else:
             self.logger('The RIXS map has NOT been prepared.')
     def overplot(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         obj, thread = self.thread_locknload(self.core.multiplot)
         thread.finished.connect(self.showmulti)
         thread.start()
     @pyqtSlot()
     def showmulti(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         # self.figure.set_size_inches(self.figsize1, self.figsize2)
         if self.core.overplotworked:
             curves = self.core.mplot_curves
@@ -1264,12 +910,12 @@ class PostprocessingTab(AdlerTab):
             plot1D_sliders(curves, fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
     def autofit(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         obj, thread = self.thread_locknload(self.core.autofit_many)
         thread.finished.connect(self.showfits)
         thread.start()
     def multifit(self):
-        self.profile_list.update_values()
+        # self.profile_list.update_values()
         obj, thread = self.thread_locknload(self.core.fit_many)
         thread.finished.connect(self.showfits)
         thread.start()
@@ -1283,7 +929,7 @@ class PostprocessingTab(AdlerTab):
             plotlabs = self.core.mplot_override
             peaks = self.core.mplot_fits
             fitparams = self.core.mplot_fitparams
-            self.profile_list.assign_fitparams(fitparams)
+            # self.profile_list.assign_fitparams(fitparams)
             plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
         

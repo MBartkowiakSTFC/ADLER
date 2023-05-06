@@ -14,10 +14,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # 
-# Copyright (C) Maciej Bartkowiak, 2019-2022
+# Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
-The GUI for the Andor Camera file loader.
+This is the core component of the ADLER GUI.
+SingleTab is a widget where a single measurement
+(possibly consisting of many files) can be loaded
+into ADLER and analysed.
 """
 
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, QSize,  QThread
@@ -83,88 +86,7 @@ GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
 
-#### filesystem monitoring part
-def FindUnprocessedFiles(fpath):
-    infiles, outfiles = [], []
-    # with os.scandir(fpath) as it:
-    for entry in os.scandir(fpath):
-        if entry.is_file():
-            tokens = entry.name.split('.')
-            name, extension = '.'.join(tokens[:-1]), tokens[-1]
-            if extension == 'sif':
-                infiles.append(name)
-            elif extension == 'asc':
-                if name[-3:] == '_1D':
-                    outfiles.append(name[:-3])
-                else:
-                    outfiles.append(name[:-3])
-    unp_files = []
-    for fnam in infiles:
-        if not fnam in outfiles:
-            unp_files.append(fnam)
-    return unp_files
-
 #### plotting part
-
-def plot2D(pic, ax, outFile = "", fig = None, text = ''):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    print(pic.shape, pic.min(), pic.max())
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (horizontal)', 'Pixels (vertical)']
-    topval = np.nan_to_num(pic).max()
-    if topval == 0.0:
-        topval = 1.0
-    xxx = axes.imshow(np.nan_to_num(pic)[::-1,:], extent = [ax[1][0], ax[1][-1],
-                                        ax[0][0], ax[0][-1]], interpolation = 'none',
-                                        cmap = mpl.get_cmap('OrRd'), aspect = 'auto',
-                                        vmin = np.percentile(pic, 20), vmax = np.percentile(pic, 90)
-                                        # vmin = 1e-3, vmax = 1.0
-                                        )
-    cb = mpl.colorbar(xxx, ax = xxx.axes, format = '%.1e', pad = 0.02)
-    cb.set_label(labels[0])
-    # cb.set_clim(-1, 2.0)
-    # xxx.autoscale()
-    # axes.contour(np.nan_to_num(pic), # [1e-3*np.nan_to_num(pic).max()], 
-    #                            extent = [ax[0][0], ax[0][-1], ax[1][0], ax[1][-1]],
-    #                            aspect = 'auto', linestyles = 'solid', linewidths = 1.0)
-    axes.grid(True)
-    axes.set_xlabel(axlabels[0])
-    axes.set_ylabel(axlabels[1])
-    if len(text) > 0:
-        axes.set_title(text)
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    axtextf = fig.add_axes([0.20, 0.11, 0.10, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        fig.canvas.draw()
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
 
 def plot1D(pic, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= [],  title = "", autolimits = True, eline = None, efactor = None):
     if fig == None:
@@ -527,13 +449,16 @@ correction_variables = [
                                       'Length': 1,  'Type':'float'}, 
 ]
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
 class SingleTab(AdlerTab):
+    """This tab is central to the ADLER interface.
+    It is the part of the GUI that deals with processing
+    the results of a single measurement. Combining files,
+    offset correction, background subtraction - all these
+    are applied to the data in this tab.
+
+    It is connected to an instance of AdlerCore
+    which performs all the operations on the data.
+    """
     for_preprocess = pyqtSignal(object)
     for_process = pyqtSignal(object)
     for_simplemerge = pyqtSignal(object)
@@ -610,9 +535,16 @@ class SingleTab(AdlerTab):
         self.corethread.start()
     @pyqtSlot()
     def cleanup(self):
+        """This method is called on exit. Before
+        the GUI is destroyed, the thread running in the background
+        (and operating the AdlerCore) should exit.
+        """
         self.corethread.quit()
         self.corethread.wait()
     def make_layout(self):
+        """This method creates and positions
+        all the widgets of the tab.
+        """
         # base = QWidget(self.master)
         # self.base=base
         base = self.base
@@ -719,46 +651,6 @@ class SingleTab(AdlerTab):
         self.boxes_base = boxes_base
         self.flip_buttons()
         return boxes
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
-    def background_launch(self,  core_function,  args =[]):
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
-#    def flip_buttons(self):
-#        for n in range(len(self.button_list)):
-#            self.button_list[n].setEnabled(self.active_buttons[n])
-    def save_last_params(self, lastfunction = None):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLERsingle.txt'), 'w')
-        except:
-            return None
-        else:
-            source.write('Lastdir: '+str(self.core.temp_path) + '\n')
-            source.write('Lastfile: '+str(self.temp_name) + '\n')
-            for kk in self.input_keys:
-                source.write(" ".join([str(u) for u in [kk[0], kk[1], self.params[kk[0]][kk[1]]]]) + '\n')
-            if not lastfunction == None:
-                source.write('Last function called: ' + str(lastfunction) + '\n')
-            source.write('Matplotlib_scale: ' + str(mpl_scale) + '\n')
-            source.write('Matplotlib_figure_scale: ' + str(mpl_figure_scale) + '\n')
-            source.write('Font_scale: ' + str(font_scale) + '\n')
-            source.close()
-    def load_last_params(self):
-        try:
-            source = open(os.path.join(expanduser("~"),'.ADLERsingle.txt'), 'r')
-        except:
-            return None
-        else:
-            for line in source:
-                toks = line.split()
-                if len(toks) > 1:
-                    if toks[0] == 'Lastdir:':
-                        try:
-                            self.core.temp_path = toks[1]
-                        except:
-                            pass
-            source.close()
     def logger(self, message):
         now = time.gmtime()
         timestamp = ("-".join([str(tx) for tx in [now.tm_mday, now.tm_mon, now.tm_year]])
@@ -766,20 +658,6 @@ class SingleTab(AdlerTab):
         self.log.setReadOnly(False)
         self.log.append('MainTab :' + timestamp + message)
         self.log.setReadOnly(True)
-    def MakeCanvas(self, parent):
-        mdpi, winch, hinch = 75, 9.0*mpl_figure_scale, 7.0*mpl_figure_scale
-        canvas = QWidget(parent)
-        layout = QVBoxLayout(canvas)
-        figure = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg = FigureCanvasQTAgg(figure)
-        figAgg.setParent(canvas)
-        figAgg.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
-        figAgg.updateGeometry()
-        toolbar = NavigationToolbar2QTAgg(figAgg, canvas)
-        toolbar.update()
-        layout.addWidget(figAgg)
-        layout.addWidget(toolbar)
-        return canvas, figure, layout
     def MakeButton(self, parent, text, function, tooltip = ""):
         button = QPushButton(text, parent)
         if tooltip:
@@ -849,16 +727,6 @@ class SingleTab(AdlerTab):
             self.conf_update.emit({'PATH_data': newpath})
             self.currentpath = newpath
             # self.got_valid_dir.emit()
-#    def fake_data_button(self):
-#        self.core.generate_mock_dataset()
-#        plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
-#        # self.filelist = result
-#        self.active_buttons[0:9] = 1
-#        self.active_buttons[9:11] = 0
-#        self.active_buttons[11:13] = 1
-#        self.flip_buttons()
-#        if self.logplotter is not None:
-#            self.logplotter.takeData(self.core.logvals)
     def flip_buttons(self):
         if self.dialog:
             self.active_buttons[0] = 0

@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # 
-# Copyright (C) Maciej Bartkowiak, 2019-2022
+# Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
 This is a collection of useful PyQt widgets used in ADLER
@@ -24,7 +24,7 @@ and other software projects related to PEAXIS.
 import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer, QThread, QMutex,  QSemaphore, Qt, \
                                         QPersistentModelIndex
-from PyQt6.QtWidgets import QProgressBar,  QWidget,  QTextEdit, QVBoxLayout, QCheckBox, \
+from PyQt6.QtWidgets import QProgressBar,  QWidget,  QTextEdit, QVBoxLayout, QCheckBox, QFrame, \
                                                 QGroupBox, QDialog, QLabel, QTabWidget, QGridLayout, \
                                                 QDockWidget, QScrollArea, QSplitter, QSizePolicy, QTableView, QMenu
 from PyQt6.QtGui import QFont, QColor, QPainter, QStandardItemModel, QStandardItem
@@ -242,6 +242,15 @@ class ManyButtons(QWidget):
             newval = b.checkState() == Qt.CheckState.Checked
             self.bvals[n] = newval
         self.new_values.emit(self.bvals)
+
+class QHLine(QFrame):
+    """This widget is just a horizontal separator
+    that can be placed in a GUI.
+    """
+    def __init__(self):
+        super().__init__()
+        self.setFrameShape(QFrame.HLine)
+        self.setFrameShadow(QFrame.Sunken)
 
 class FlexBar(QProgressBar):
     def __init__(self,  parent):
@@ -504,11 +513,6 @@ class AdlerTab(QObject):
     def unblock_interface(self):
         self.boxes_base.setEnabled(True)
         self.button_base.setEnabled(True)
-    def background_launch(self,  core_function,  args =[]):
-        self.oscillator.start()
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
     @pyqtSlot()
     def flip_buttons(self):
         self.unblock_interface()
@@ -542,83 +546,6 @@ class AdlerTab(QObject):
         # self.thread.start()
         return obj, thread
 
-class CustomThreadpool(QObject):
-    finished = pyqtSignal()
-    def __init__(self,  MAX_THREADS = 1):
-        super().__init__()
-        self.maxthreads = MAX_THREADS
-        self.mutex = QMutex()
-        self.sem = QSemaphore(MAX_THREADS)
-        self.reset()
-        self.finished.connect(self.reset)
-    @pyqtSlot()
-    def reset(self):
-        self.mutex.lock()
-        self.counter = 0
-        self.tasklist = [] # these are the pending tasks
-        self.runlist = []
-        self.objlist = []
-        self.isrunning = False
-        self.mutex.unlock()
-    @pyqtSlot()
-    def decrement(self):
-        self.sem.release(1)
-        # print('Semaphore released. Now available: ',  self.sem.available())
-        self.mutex.lock()
-        self.counter -= 1
-        # if self.running == 0:
-        #     self.finished.emit()
-        self.mutex.unlock()
-    @pyqtSlot()
-    def run(self):
-        if self.isrunning == True:
-            return None
-        self.isrunning = True
-        # print("threadpool: isrunning")
-        while len(self.tasklist) > 0:
-            self.launchone()
-        # print("threadpool: stopped submitting, waiting to complete")
-        # print("Semaphore. Available: ",  self.sem.available(),  "asking for",  self.maxthreads)
-        self.sem.acquire(self.maxthreads)
-        for th in self.runlist:
-            th.quit()
-        for th in self.runlist:
-            th.wait()
-        self.finished.emit()
-        self.sem.release(self.maxthreads)
-        # print("Semaphore. Available: ",  self.sem.available(),  "released",  self.maxthreads)
-    def launchone(self):
-        self.mutex.lock()
-        th = self.tasklist.pop()
-        self.runlist.append(th)
-        self.mutex.unlock()
-        # print("threadpool: launchone: about to acquire")
-        self.sem.acquire(1)
-        # print('Semaphore acquired. Now available: ',  self.sem.available())
-        th.start()
-    def make_thread(self, target_function,  args = []):
-        # obj = OneshotWorker()  # no parent!
-        obj = ThreadpoolWorker(self)  # no parent!
-        thread = QThread()  # no parent!
-        obj.moveToThread(thread)
-        obj.finished.connect(thread.quit)
-        thread.started.connect(obj.run_once)
-        obj.assignFunction(target_function)
-        obj.assignArgs(args)
-        # thread.finished.connect(self.decrement)
-        return obj, thread
-    def populate(self,  target_function,  arglist = []):
-        for arginst in arglist:
-            obj,  thread = self.make_thread(target_function, args = arginst)
-            self.tasklist.append(thread)
-            self.objlist.append(obj)
-    def add_task(self,  target_function):
-        if self.isrunning == False:
-            obj,  thread = self.make_thread(target_function)
-            self.tasklist.append(thread)
-            self.objlist.append(obj)
-            # print("threadpool: added a task")
-
 class PatternDialog(QDialog):
     values_ready = pyqtSignal(object)
     def __init__(self, master,  dialogname = ""):
@@ -640,11 +567,6 @@ class PatternDialog(QDialog):
     def unblock_interface(self):
         self.boxes_base.setEnabled(True)
         self.button_base.setEnabled(True)
-    def background_launch(self,  core_function,  args =[]):
-        self.oscillator.start()
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
     @pyqtSlot()
     def flip_buttons(self):
         self.unblock_interface()

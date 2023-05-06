@@ -14,420 +14,41 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # 
-# Copyright (C) Maciej Bartkowiak, 2019-2022
+# Copyright (C) Maciej Bartkowiak, 2019-2023
 
-import math
+__doc__ = """
+The part of the ADLER code defining the RixsMeasurement class
+which should reliably combine any number of rixs spectra into
+a single final spectrum.
+"""
+
 import numpy as np
 import os
-import time
-import sys
 import gzip
 import h5py
-from os.path import expanduser
-import copy
 from collections import defaultdict
+
 import yaml
 try:
-    from yaml import CLoader as Loader, CDumper as Dumper
+    from yaml import CLoader as Loader
 except ImportError:
-    from yaml import Loader, Dumper
-from astropy.io import fits as fits_module
+    from yaml import Loader
 
-ROAR_LJOKELSOI = 32.518
+from scipy.optimize import leastsq
+from scipy.interpolate import interp1d
 
+# import ctypes
 
+from PyQt6.QtCore import QDate, QTime
 
-def loadtext_wrapper(fname):
-    result = []
-    try:
-        source = open(fname, 'rb')
-    except:
-        return None
-    else:
-        for n, line in enumerate(source):
-            try:
-                textline = line.decode('utf-8')
-            except:
-                try:
-                    textline = line.decode('cp1252')
-                except:
-                    continue
-                else:
-                    result.append(textline.strip('\n'))
-            else:
-                result.append(textline.strip('\n'))
-        source.close()
-        return result
-
-
-#### data processing part
-
-def read_1D_curve(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep = ','):
-    curve = []
-    envals = []
-    units = 'Detector channels'
-    source = loadtext_wrapper(fname)
-    if source is None:
-        print("could not read file: ", fname)
-        return curve, envals, units
-    else:
-        for line in source:
-            if len(line.split()) > 0:
-                if comment in line.split()[0][0]:
-                    if 'hoton energy' in line:
-                        label = line.split('hoton energy')[-1].strip()
-                        for tok in label.split():
-                            try:
-                                tval = float(tok)
-                            except:
-                                continue
-                            else:
-                                envals.append(tok)
-                else:
-                    if (sep == ' ') or (sep == ''):
-                        xy = [float(z) for z in line.split()]
-                    else:
-                        try:
-                            xy = [float(z) for z in line.split(sep)]
-                        except:
-                            xy = [float(z) for z in line.split()]
-                    if ecol < 0:
-                        curve.append((xy[xcol], xy[ycol]))
-                    else:
-                        curve.append((xy[xcol], xy[ycol], xy[ecol]))
-        curve = np.array(curve)
-        sorting = np.argsort(curve[:,0])
-        curve = curve[sorting]
-        print(curve.shape)
-        # source.close()
-        xmin,  xmax = curve[:, 0].min(),  curve[:, 0].max()
-        if xmin <0:
-            units = "Energy Transfer [eV]"
-        elif xmax - xmin > 1000.0:
-            units = "Detector channels"
-        else:
-            units = "Energy [eV]"
-        if len(envals) == 0:
-            envals = [-1.0]
-    return curve, envals, units
-
-def read_1D_curve_extended(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep = ','):
-    curve = []
-    envals = []
-    pardict = {'energy': -1.0, 
-    'temperature':-1.0, 
-    'Q':-1.0, 
-    '2theta':-1.0
-    }
-    units = 'Detector channels'
-    source = loadtext_wrapper(fname)
-    if source is None:
-        print("could not read file: ", fname)
-        return curve, envals, units, pardict
-    else:
-        for line in source:
-            if len(line.split()) > 0:
-                if comment in line.split()[0][0]:
-                    if 'hoton energy' in line:
-                        label = line.split('hoton energy')[-1].strip()
-                        for tok in label.split():
-                            try:
-                                tval = float(tok)
-                            except:
-                                continue
-                            else:
-                                envals.append(tok)
-                                pardict['energy'] = tval
-                    elif 'Temperature' in line:
-                        label = line.split('Temperature')[-1].strip()
-                        for tok in label.split():
-                            try:
-                                tval = float(tok)
-                            except:
-                                continue
-                            else:
-                                pardict['temperature'] = tval
-                                break
-                    elif 'Q' in line:
-                        label = line.split('Q')[-1].strip()
-                        for tok in label.split():
-                            try:
-                                tval = float(tok)
-                            except:
-                                continue
-                            else:
-                                pardict['Q'] = tval
-                                break
-                    elif '2 theta' in line:
-                        label = line.split('2 theta')[-1].strip()
-                        for tok in label.split():
-                            try:
-                                tval = float(tok)
-                            except:
-                                continue
-                            else:
-                                pardict['2theta'] = tval
-                                break
-                else:
-                    if (sep == ' ') or (sep == ''):
-                        xy = [float(z) for z in line.split()]
-                    else:
-                        try:
-                            xy = [float(z) for z in line.split(sep)]
-                        except:
-                            xy = [float(z) for z in line.split()]
-                    if ecol < 0:
-                        curve.append((xy[xcol], xy[ycol]))
-                    else:
-                        curve.append((xy[xcol], xy[ycol], xy[ecol]))
-        curve = np.array(curve)
-        sorting = np.argsort(curve[:,0])
-        curve = curve[sorting]
-        print(curve.shape)
-        # source.close()
-        xmin,  xmax = curve[:, 0].min(),  curve[:, 0].max()
-        if xmin <0:
-            units = "Energy Transfer [eV]"
-        elif xmax - xmin > 1000.0:
-            units = "Detector channels"
-        else:
-            units = "Energy [eV]"
-        if len(envals) == 0:
-            envals = [-1.0]
-    return curve, envals, units, pardict
-
-def read_1D_xas(fname):
-    curve = []
-    teyvals, tpyvals = [], []
-    ecol, teycol, tpycol = 0, -1, -1
-    source = loadtext_wrapper(fname)
-    if source is None:
-        print("could not read file: ", fname)
-        return curve, teyvals, tpyvals
-    else:
-        lastline = ""
-        for line in source:
-            if len(line.split()) > 0:
-                if '#' in line.split()[0][0]:
-                    lastline = line
-                else:
-                    try:
-                        xy = [float(z) for z in line.split(',')]
-                    except:
-                        xy = [float(z) for z in line.split()]
-                    curve.append(xy)
-        head = lastline.strip('#\n').split(',')
-        for coln, tok in enumerate(head):
-            if tok == "E":
-                ecol = coln
-            elif tok == "CURR1":
-                tpycol = coln
-            elif tok == "CURR2":
-                teycol = coln
-        curve = np.array(curve)
-        envals = curve[:, ecol]
-        sorting = np.argsort(envals)
-        envals = envals[sorting]
-        curve = curve[sorting]
-        print(curve.shape)
-        if tpycol >= 0:
-            tpyvals = curve[:, tpycol]
-        else:
-            tpyvals = np.zeros(envals.shape)
-        if teycol >= 0:
-            teyvals = curve[:, teycol]
-        else:
-            teyvals = np.zeros(envals.shape)
-        # source.close()
-    return curve, teyvals, tpyvals
-
-def ReadFits(fname):
-    """Reads the .sif file produced by the Andor iKon-L CCD camera.
-    The dimensions of the pixel array can be changed if necessary.
-    """
-    fitsfile = fits_module.open(fname)
-    img = fitsfile[0]
-    d_array = img.data
-    if d_array.shape[0] < 2050 and d_array.shape[1] < 2050: # we have a file from the ANDOR camera
-        return d_array.astype(np.float64), ""
-    else: # we have a file from the Sydor detector
-        return d_array.T.astype(np.float64), ""
-
-def ReadAsc(fname):
-    """Reads the old 2D .asc file format which for some reason
-    was used on PEAXIS in the very beginning.
-    Or, if things don't work out, it doesn't read it.
-    """
-    source = open(fname, 'r')
-    data = []
-    for n, line in enumerate(source):
-        if n >= 2048:
-            continue
-        else:
-            templine = str(line).replace('\t', ' ')
-            toks = [float(x) for x in templine.split()[1:]]
-            data.append(toks)
-    source.close()
-    d_array = np.array(data)# .astype(np.float64)
-    print('ASC dimensions:',  d_array.shape)
-    return d_array.T, ""
-
-def ReadAndor(fname, dimensions = (2048,2048), byte_size=4, data_type='c'):
-    """Reads the .sif file produced by the Andor iKon-L CCD camera.
-    The dimensions of the pixel array can be changed if necessary.
-    """
-    size = os.path.getsize(fname)
-    source = open(fname, 'rb')
-    nrows = dimensions[-1]
-    header, data = [],[]
-    bindata = None    
-    total_length = 0
-    header = np.fromfile(source, np.byte, size - 4*dimensions[0]*dimensions[1] -2*4, '') # 2772 is close
-    print("Headersize",  size - 4*dimensions[0]*dimensions[1] -2*4)
-    data = np.fromfile(source, np.float32, dimensions[0]*dimensions[1], '')
-    header = bytes(header)
-    lines = header.split(b'\n')
-    header = []
-    for n, line in enumerate(lines):
-        try:
-            header.append(line.decode('ascii'))
-        except UnicodeDecodeError:
-            print('header lines skipped:', n+1, 'with length:', len(line))
-    source.close()
-    return np.array(data).reshape(dimensions), header
-
-
-class DataEntry():
-    """
-    The basic class for handling lines from CHaOS data headers.
-    The main problem is that CHaOS file headers may change,
-    and they may contain numbers, text, a mixture of the two,
-    or possibly nothing.
-    """
-
-    def __init__(self, input = None, label = ""):
-        self._array = None
-        self._label = ""
-        self._pure_numbers = True
-        self.data = input
-        self.label = label
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(input='{self.string}', label={self.label})"
-
-    def __len__(self):
-        if self._array is not None:
-            return len(self._array)
-        else:
-            return 0
-    
-    def __add__(self, other):
-        if self._label == other._label:
-            result = copy.deepcopy(self)
-            if self._pure_numbers == other._pure_numbers:
-                result.label = self.label
-                result.data = np.concatenate([self.data, other.data])
-            else:
-                raise TypeError("DataEntry: adding numbers to non-numbers")
-            return result
-        raise ValueError("DataEntry: adding two entries with different labels")
-    
-    def __str__(self):
-        return self.string
-    
-    def __eq__(self, other):
-        comp_labels = self.label == other.label
-        comp_values = np.allclose(self.data, other.data)
-        return comp_labels and comp_values
-
-    @property
-    def label(self):
-        return self._label
-    
-    @label.setter
-    def label(self, input: str):
-        self._label = input.strip()
-
-    @property
-    def string(self):
-        return " ".join([str(x) for x in self._array])
-
-    @property
-    def data(self):
-        return self._array
-
-    @data.setter
-    def data(self, input):
-        self._array = None
-        self._pure_numbers = True
-        if input is None:
-            self._array = np.array([])
-        elif isinstance(input, str):
-            toks = input.split()
-            numbers = []
-            strings = []
-            for tk in toks:
-                strings.append(tk)
-                try:
-                    num = float(tk)
-                except ValueError:
-                    self._pure_numbers = False
-                else:
-                    numbers.append(num)
-            if self._pure_numbers:
-                self._array = np.array(numbers)
-            else:
-                self._array = np.array(strings)
-        else:
-            try:
-                len(input)
-            except AttributeError:
-                try:
-                    num = float(input)
-                except ValueError:
-                    self._pure_numbers = False
-                    self._array = np.array([input])
-                else:
-                    self._pure_numbers = True
-                    self._array = np.array([num])
-            else:
-                try:
-                    temp = [float(x) for x in input]
-                except ValueError:
-                    self._array = np.array([str(x) for x in input])
-                    self._pure_numbers = False
-                else:
-                    self._array = np.array(temp)
-                    self._pure_numbers = True
-                    
-
-class DataGroup(defaultdict, yaml.YAMLObject):
-    
-    _last_group = 1
-
-    # yaml_tag = '!AdlerDataGroup'
-
-    def __init__(self, default_class = DataEntry, label = None, elements = None):
-        self.def_class = default_class
-        super(DataGroup, self).__init__(self.def_class)
-
-        if label is None:
-            self.label = "UnnamedGroup"+str(DataGroup._last_group)
-            DataGroup._last_group += 1
-        else:
-            self.label = label
-        
-        if elements is not None:
-            for line in elements:
-                key, value = line[0], line[1]
-                self.__setitem__(key, value)
-    
-    def __repr__(self):
-        temp = []
-        for key in self.keys():
-            temp.append((key, self.__getitem__(key)))
-        return "%s(default_class=%r, label=%r, elements=%r)" % (self.__class__.__name__, self.def_class, self.label, temp)
-    
+from ADLERcalc.DataHandling import DataGroup, DataEntry
+from ADLERcalc.ioUtils import WriteProfile, ReadAndor, ReadAsc, ReadFits,\
+                              load_datheader, load_datlog
+from ADLERcalc.fitUtils import polynomial, fit_polynomial, gaussian
+from ADLERcalc.imageUtils import elastic_line, RemoveCosmics, curvature_profile, make_profile
+from ADLERcalc.fitUtils import gauss_denum
+from ADLERcalc.qtObjects import MergeManyCurves, MergeManyArrays
+from ADLERcalc.arrayUtils import rand_mt
 
 class RixsMeasurement():
     def __init__(self, filenames = [], max_threads = 1):
@@ -515,17 +136,17 @@ class RixsMeasurement():
         for line in pdict['fitting_params_channels']:
             toks = line.split()
             if len(toks) == 2:
-                key, val = toks[0].strip(' '),  toks[1].strip(' ')
+                key, val = toks[0].strip(' \n'),  toks[1].strip(' \n')
                 self.fitting_params_channels[key] = float(val)
         for line in pdict['fitting_params_absEnergy']:
             toks = line.split()
             if len(toks) == 2:
-                key, val = toks[0].strip(' '),  toks[1].strip(' ')
+                key, val = toks[0].strip(' \n'),  toks[1].strip(' \n')
                 self.fitting_params_absEnergy[key] = float(val)
         for line in pdict['fitting_params_eV']:
             toks = line.split()
             if len(toks) == 2:
-                key, val = toks[0].strip(' '),  toks[1].strip(' ')
+                key, val = toks[0].strip(' \n'),  toks[1].strip(' \n')
                 self.fitting_params_eV[key] = float(val)
         self.times = np.array([float(x) for x in pdict['times']])
         self.energies = np.array([float(x.strip('[] \n')) for x in pdict['energies']])
@@ -577,13 +198,13 @@ class RixsMeasurement():
                 try:
                     element.keys()
                 except AttributeError:
-                    newln = tkey + " $ " + str(element)
+                    newln = tkey + " $ " + element.string
                     target.write(' '.join(['#HEADER#',newln.strip().strip('\n'),'\n']))
                 else:
                     for gk in element.keys():
                         item = element[gk]
                         innerkey = str(gk)
-                        newln = tkey + " # " + innerkey + " $ " + str(item)
+                        newln = tkey + " # " + innerkey + " $ " + item.string
                         target.write(' '.join(['#HEADER#',newln.strip().strip('\n'),'\n']))
         if crucial is not None:
             for hk in crucial.keys():
@@ -1100,7 +721,7 @@ class RixsMeasurement():
         energy = []
         shortnames = []
         headers,  logs = [],  []
-        header,  vallog = defaultdict(lambda:[ -1]), defaultdict(lambda: np.array([]))
+        header,  vallog = DataGroup(default_class= DataGroup, label= "Header"), defaultdict(lambda: np.array([]))
         textheader = ""
         for n, tname in enumerate(names):
             nfiles += 1

@@ -1,5 +1,5 @@
 
-from ADLER.DataHandling import DataEntry
+from src.DataHandling import DataEntry
 
 import pytest
 

@@ -14,23 +14,22 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # 
-# Copyright (C) Maciej Bartkowiak, 2019-2022
+# Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
-This file contains the ADLER Beamline Commissioning Tab.
-It is a part of the GUI that is useful mainly to the instrument scientists.
+The ADLER Tab for viewing the variables logged in the XAS files.
 """
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot,  QSize
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QTableWidget, QFormLayout, QFileDialog,   \
-                                                QPushButton,  QVBoxLayout, QHBoxLayout, QTableWidgetItem, \
-                                                QScrollArea
-# from PyQt5 import sip
+                                                QPushButton,  QVBoxLayout, QHBoxLayout, QTableWidgetItem, QScrollArea
+# from PyQt6 import sip
 from VariablesGUI import VarBox
 from ExtendGUI import AdlerTab
-from ADLERcalc import load_only_logs, load_lise_logs,  fit_neon_gas, fit_n2_gas, fit_edge_profile, gauss_denum
+from ADLERcalc import load_only_logs,  load_and_average_logs, load_filter_and_average_logs
+
 
 import numpy as np
 import os
@@ -84,86 +83,7 @@ GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
 
-#### filesystem monitoring part
-def FindUnprocessedFiles(fpath):
-    infiles, outfiles = [], []
-    # with os.scandir(fpath) as it:
-    for entry in os.scandir(fpath):
-        if entry.is_file():
-            tokens = entry.name.split('.')
-            name, extension = '.'.join(tokens[:-1]), tokens[-1]
-            if extension == 'sif':
-                infiles.append(name)
-            elif extension == 'asc':
-                if name[-3:] == '_1D':
-                    outfiles.append(name[:-3])
-                else:
-                    outfiles.append(name[:-3])
-    unp_files = []
-    for fnam in infiles:
-        if not fnam in outfiles:
-            unp_files.append(fnam)
-    return unp_files
-
 #### plotting part
-
-def plot2D(pic, ax, outFile = "", fig = None, text = ''):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    print(pic.shape, pic.min(), pic.max())
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (horizontal)', 'Pixels (vertical)']
-    topval = np.nan_to_num(pic).max()
-    if topval == 0.0:
-        topval = 1.0
-    xxx = axes.imshow(np.nan_to_num(pic)[::-1,:], extent = [ax[1][0], ax[1][-1],
-                                        ax[0][0], ax[0][-1]], interpolation = 'none',
-                                        cmap = mpl.get_cmap('OrRd'), aspect = 'auto',
-                                        vmin = np.percentile(pic, 20), vmax = np.percentile(pic, 90)
-                                        # vmin = 1e-3, vmax = 1.0
-                                        )
-    cb = mpl.colorbar(xxx, ax = xxx.axes, format = '%.1e', pad = 0.02)
-    cb.set_label(labels[0])
-    # cb.set_clim(-1, 2.0)
-    # xxx.autoscale()
-    # axes.contour(np.nan_to_num(pic), # [1e-3*np.nan_to_num(pic).max()], 
-    #                            extent = [ax[0][0], ax[0][-1], ax[1][0], ax[1][-1]],
-    #                            aspect = 'auto', linestyles = 'solid', linewidths = 1.0)
-    axes.grid(True)
-    axes.set_xlabel(axlabels[0])
-    axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    axtextf = fig.add_axes([0.20, 0.11, 0.10, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        fig.canvas.draw()
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
 
 def plot1D(pic, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= [], 
                   legend_pos = 0):
@@ -224,13 +144,7 @@ def plot1D(pic, outFile = "", fig = None, text = '', label_override = ["", ""], 
     axtextf.set_title(text)
     # fig.add_axes(axtextf)
     if len(curve_labels) == len(pic):
-        if legend_pos <0:
-            axes.legend(loc='upper center', bbox_to_anchor=(0.25, -0.14),
-                fancybox=True, shadow=True, ncol=1,
-                # scatterpoints = 1, numpoints = 1)
-                )
-        else:
-            axes.legend(loc=legend_pos)
+        axes.legend(loc=legend_pos)
     if not outFile:
         if trigger:
             mpl.show()
@@ -294,13 +208,19 @@ def plot1D_sliders(pic, outFile = "", fig = None, text = '', label_override = ["
     box = axes.get_position()
     axes.set_position([box.x0, box.y0 + box.height * 0.2,
              box.width, box.height * 0.8])
-    axes.set_ylim([0.9*minval, 1.1*maxval])
+    axes.set_ylim([minval - 0.1*abs(minval), maxval + 0.1*abs(maxval)])
     axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
     axtextf.set_yticks([])
     axtextf.set_xticks([])
     axtextf.set_title(text)
     if len(curve_labels) == len(pic):
-        axes.legend(loc=legend_pos)
+        if legend_pos <0:
+            axes.legend(loc='upper center', bbox_to_anchor=(0.25, -0.14),
+                fancybox=True, shadow=True, ncol=1,
+                # scatterpoints = 1, numpoints = 1)
+                )
+        else:
+            axes.legend(loc=legend_pos)
     # here we add sliders
     offset_slider_ax  = fig.add_axes([0.25, 0.15, 0.55, 0.03])#, axisbg=axis_color)
     offset_slider = Slider(offset_slider_ax, 'Offset', 0.0, max_offset, valinit=0.0)
@@ -561,6 +481,29 @@ def plot2D_sliders(pics, ax, outFile = "", fig = None, text = '', interp = 'none
         mpl.savefig(outFile, bbox_inches = 'tight')
         mpl.close()
 
+####
+
+def write_avgd(fname, xaxis, datsets, labels = []):
+    templist = [xaxis]
+    lablist = []
+    for n, ds in enumerate(datsets):
+        templist.append(ds[:, 1])
+        if n==0:
+            try:
+                lablist.append(labels[0][0])
+            except:
+                pass
+        try:
+            lablist.append(labels[n][1])
+        except:
+            pass
+    all_data = np.column_stack(templist)
+    dump = open(fname, 'w')
+    dump.write('# '+', '.join(lablist)+'\n')
+    for line in all_data:
+        dump.write(", ".join([str(x) for x in line]) + '\n')
+    dump.close()
+
 #### GUI part
 
 plotting_variables = [
@@ -570,18 +513,6 @@ plotting_variables = [
 {'Name': 'Legend position',  'Unit':'N/A',  'Value':0,   'Key' : 'legpos', 
                                'MinValue':0,  'MaxValue':10,  'Length': 1,  'Type':'int',
                                'Comment':'The position of the legend in the plot. The non-negative values follow the \nmatplotlib definition, and negative values make the legend appear below the plot.'},  
-]
-
-fitting_variables = [
-{'Name': 'Fixed Lorentz FWHM for N2',  'Unit':'meV',  'Value':120,   'Key' : 'n2width', 
-                               'MinValue':0.0,  'MaxValue':1e7,  'Length': 1,  'Type':'float',
-                               'Comment':'This part of the Voigt profile will be fixed in the fitting.'},  
-{'Name': 'Fixed Lorentz FWHM for Neon',  'Unit':'meV',  'Value':254,   'Key' : 'neonwidth', 
-                               'MinValue':0,  'MaxValue':1e7,  'Length': 1,  'Type':'float',
-                               'Comment':'This part of the Voigt profile will be fixed in the fitting.'},  
-{'Name': 'Number of linear functions for Edge',  'Unit':'N/A',  'Value':0,   'Key' : 'nlines', 
-                               'MinValue':0,  'MaxValue':2,  'Length': 1,  'Type':'int',
-                               'Comment':'The number of linear functions to be included in the fitting of the edge in the spectrum. \nIf set to 2, it is assumed that the slope of the linear background is different before and after the edge position.'},  
 ]
 
 tabnames = ['Name', 'Length', 'Xlimits', 'Plot it?', 'Set as X', 'Set as Y']
@@ -734,36 +665,22 @@ class LogList(QObject):
                         self.table.item(nr, 5).setCheckState(Qt.CheckState.Unchecked)
         self.table.blockSignals(False)
 
-class QHLine(QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
-
-class BeamlineTab(AdlerTab):
+class LogviewerTab(AdlerTab):
     def __init__(self, master,  canvas,  log,  startpath = None):
         super().__init__(master)
         self.master = master
         # self.progbar = None
         self.canvas, self.figure, self.clayout = canvas
-        self.params = [(plotting_variables,  "Plotting"), (fitting_variables,  "Fitting")]
+        self.params = [(plotting_variables,  "Plotting")]
         self.boxes = self.make_layout()
-        self.boxes[1].values_changed.connect(self.update_fitpars)
         self.parnames = []
         self.pardict = {}
         self.log = log
         self.filelist = None
-        self.fwhm_n2, self.fwhm_neon,  self.nlines_edge = None, None, None
         self.currentpath = startpath
-        self.update_fitpars()
+        self.currentname = "generic"
         # self.curve_list.gotvals.connect(self.core.take_table_values)
         # self.flip_buttons()
-    @pyqtSlot()
-    def update_fitpars(self):
-        names,  vdict = self.boxes[1].returnValues()
-        self.fwhm_n2 = vdict['n2width'][0]
-        self.fwhm_neon = vdict['neonwidth'][0]
-        self.nlines_edge = vdict['nlines'][0]
     def make_layout(self):
         col1 = "background-color:rgb(30,180,20)"
         col2 = "background-color:rgb(0,210,210)"
@@ -776,16 +693,12 @@ class BeamlineTab(AdlerTab):
             col1, 'Plotting'], # 1
         ['Clear List', self.clear_list, 'Remove all the data from the list.', 
             col1, 'Data Handling'], # 2
-        ['Load LISE files', self.load_LISE, 'Load one or more LISE files.', 
+        ['Load XAS File(s)', self.load_logs, 'Load one or more XAS files.', 
             '', 'Data Handling'], # 2
-        ['Load XAS files', self.load_logs, 'Load one or more XAS files.', 
+        ['Load And Process XAS', self.load_smooth_logs, 'Load and process an XAS file.', 
             '', 'Data Handling'], # 2
-        ['Fit Neon', self.fit_neon, 'Fit the position of the Ne peak for beamline energy calibration.', 
-            col3, 'Fitting'], # 0
-        ['Fit Nitrogen', self.fit_nitrogen, 'Fit the width of the N2 peaks for the beamline resolution test.', 
-            col3, 'Fitting'], # 1
-        ['Fit Edge', self.fit_edge, 'Fit the curve with a step function.', 
-            col3, 'Fitting'], # 1
+        ['Load, Filter And Process XAS', self.load_filtered_smooth_logs, 'Load and process an XAS file.', 
+            '', 'Data Handling'], # 2
         ]
         self.button_list = []
         # base = QWidget(self.master)
@@ -838,8 +751,17 @@ class BeamlineTab(AdlerTab):
         self.button_base = button_base
         self.boxes_base = boxes_base
         return boxes
-    def on_resize(self):
-        self.master.resize(self.master.sizeHint())
+    def takeDataExtended(self,  vardict, errdict):
+        try:
+            nvals = len(vardict.keys())
+        except:
+            self.logger("No variable logs loaded.")
+        else:
+            if nvals > 0:
+                for kk in vardict.keys():
+                    self.curve_list.add_row(kk, vardict[kk])
+            else:
+                self.logger("No variable logs loaded.")
     def takeData(self,  vardict):
         try:
             nvals = len(vardict.keys())
@@ -851,32 +773,14 @@ class BeamlineTab(AdlerTab):
                     self.curve_list.add_row(kk, vardict[kk])
             else:
                 self.logger("No variable logs loaded.")
-    def background_launch(self,  core_function,  args =[]):
-        self.block_interface()
-        # self.core.thread_start(core_function,  args)
-        core_function(args)
     def logger(self, message):
         now = time.gmtime()
-        timestamp = ( "BeamlineTab "
+        timestamp = ( "LogViewer "
                      + "-".join([str(tx) for tx in [now.tm_mday, now.tm_mon, now.tm_year]])
                      + ',' + ":".join([str(ty) for ty in [now.tm_hour, now.tm_min, now.tm_sec]]) + '| ')
         self.log.setReadOnly(False)
         self.log.append(timestamp + message)
         self.log.setReadOnly(True)
-    def MakeCanvas(self, parent):
-        mdpi, winch, hinch = 75, 9.0*mpl_figure_scale, 7.0*mpl_figure_scale
-        canvas = QWidget(parent)
-        layout = QVBoxLayout(canvas)
-        figure = mpl.figure(figsize = [winch, hinch], dpi=mdpi )#, frameon = False)
-        figAgg = FigureCanvasQTAgg(figure)
-        figAgg.setParent(canvas)
-        figAgg.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
-        figAgg.updateGeometry()
-        toolbar = NavigationToolbar2QTAgg(figAgg, canvas)
-        toolbar.update()
-        layout.addWidget(figAgg)
-        layout.addWidget(toolbar)
-        return canvas, figure, layout
     def MakeButton(self, parent, text, function, tooltip = ""):
         button = QPushButton(text, parent)
         if tooltip:
@@ -909,71 +813,8 @@ class BeamlineTab(AdlerTab):
             datset = np.column_stack([xax, ds[1][:len(xax)]])
             axlabels.append([xlab, ds[0]])
             datsets.append(datset)
+        write_avgd(self.currentpath+"/Averaged_"+self.currentname+'.txt', xax, datsets, axlabels)
         plot1D_grid(datsets, fig = self.figure, text = '', label_override = axlabels)
-    def fit_neon(self):
-        x, y, d = self.curve_list.return_values()
-        if len(x) == 0 or len(y) == 0:
-            self.logger("Grid mapping requires both X and Y to be set.")
-            return None
-        xlab = x[0]
-        ylab = y[0]
-        xpoints =x[1]
-        ypoints = y[1]
-        try:
-            profile, gauss_sigma, lorentz_gamma,  peak_pos,  GOF = fit_neon_gas(np.column_stack([xpoints, ypoints]),
-                                     fixed_gamma = self.fwhm_neon / 1000.0 / 2.0)
-        except:
-            profile, gauss_sigma, lorentz_gamma,  peak_pos,  GOF = np.zeros(xpoints.shape),  -1.0, -1.0, [], 1e9
-        res_text = 'Gauss FWHM = '+str(round(gauss_sigma*1000.0*gauss_denum, 4))+' meV\n'+\
-                  'Lorentz FWHM = '+str(round(lorentz_gamma, 4)*2000.0) + ' meV\n'+\
-                  'Peak positions = ' + ", ".join([str(x) for x in np.round(peak_pos, 3)]) + '\n'+\
-                  'Fit Quality = ' + str(round(1.0/GOF, 3))
-        self.logger('Neon fitting results:\n'+res_text)
-        plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
-                  text = res_text, 
-                  label_override = [xlab, ylab], curve_labels= ['Data', 'Fit'], 
-                  legend_pos = 0)
-    def fit_nitrogen(self):
-        x, y, d = self.curve_list.return_values()
-        if len(x) == 0 or len(y) == 0:
-            self.logger("Grid mapping requires both X and Y to be set.")
-            return None
-        xlab = x[0]
-        ylab = y[0]
-        xpoints =x[1]
-        ypoints = y[1]
-        try:
-            profile, gauss_sigma, lorentz_gamma,  peak_pos,  GOF = fit_n2_gas(np.column_stack([xpoints, ypoints]),
-                         fixed_gamma = self.fwhm_n2 / 1000.0 / 2.0)
-        except:
-            profile, gauss_sigma, lorentz_gamma, peak_pos,  GOF = np.zeros(xpoints.shape),  -1.0, -1.0, [],  1e9
-        res_text = 'Gauss FWHM = '+str(round(gauss_sigma*1000.0*gauss_denum, 4))+' meV\n'+\
-                  'Lorentz $\gamma$ = '+str(round(lorentz_gamma, 4)*2000.0) + ' meV\n'+\
-                  'Peak positions = ' + ", ".join([str(x) for x in np.round(peak_pos, 3)]) + '\n'+\
-                  'Fit Quality = ' + str(round(1.0/GOF, 3))
-        self.logger('Nitrogen fitting results:\n'+res_text)
-        plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
-                  text = res_text, 
-                  label_override = [xlab, ylab], curve_labels= ['Data', 'Fit'], 
-                  legend_pos = 0)
-    def fit_edge(self):
-        x, y, d = self.curve_list.return_values()
-        if len(x) == 0 or len(y) == 0:
-            self.logger("Grid mapping requires both X and Y to be set.")
-            return None
-        xlab = x[0]
-        ylab = y[0]
-        xpoints =x[1]
-        ypoints = y[1]
-        try:
-            profile, edge_pos, edge_width,  GOF = fit_edge_profile(np.column_stack([xpoints, ypoints]), nlines = self.nlines_edge)
-        except:
-            profile, edge_pos, edge_width,  GOF = np.zeros(xpoints.shape),  -1.0, -1.0, 1e9
-        plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
-                  text = 'Edge position = '+str(round(edge_pos, 4))+'\n'+'Edge width = '+str(round(edge_width, 4)) + '\n'+
-                  'Fit Quality = ' + str(round(1.0/GOF, 3)), 
-                  label_override = [xlab, ylab], curve_labels= ['Data', 'Fit'], 
-                  legend_pos = 0)
     def plot_logmap(self):
         x, y, d = self.curve_list.return_values()
         if len(x) == 0 or len(y) == 0:
@@ -1005,6 +846,30 @@ class BeamlineTab(AdlerTab):
                                labels = [xlab,ylab])
     def clear_list(self):
         self.curve_list.clear_table()
+    def load_filtered_smooth_logs(self):        
+        result, ftype = QFileDialog.getOpenFileNames(self.master,
+           'Load PEAXIS log files (.XAS files):', self.currentpath,
+           'PEAXIS variable log (*.xas);;All files (*.*)')
+        if len(result) > 0:
+            self.curve_list.clear_table()
+            templog,  errlog,  xguess = load_filter_and_average_logs(result)
+            self.takeData(templog)
+            newpath, shortname = os.path.split(result[0])
+            self.conf_update.emit({'PATH_variableviewer': newpath})
+            self.currentpath = newpath
+            self.currentname = ".".join(shortname.split('.')[:1])
+    def load_smooth_logs(self):        
+        result, ftype = QFileDialog.getOpenFileNames(self.master,
+           'Load PEAXIS log files (.XAS files):', self.currentpath,
+           'PEAXIS variable log (*.xas);;All files (*.*)')
+        if len(result) > 0:
+            self.curve_list.clear_table()
+            templog,  errlog,  xguess = load_and_average_logs(result)
+            self.takeData(templog)
+            newpath, shortname = os.path.split(result[0])
+            self.conf_update.emit({'PATH_variableviewer': newpath})
+            self.currentpath = newpath
+            self.currentname = ".".join(shortname.split('.')[:1])
     def load_logs(self):        
         result, ftype = QFileDialog.getOpenFileNames(self.master,
            'Load PEAXIS log files (.XAS files):', self.currentpath,
@@ -1014,16 +879,6 @@ class BeamlineTab(AdlerTab):
             templog = load_only_logs(result)
             self.takeData(templog)
             newpath, shortname = os.path.split(result[0])
-            self.conf_update.emit({'PATH_beamline': newpath})
+            self.conf_update.emit({'PATH_variableviewer': newpath})
             self.currentpath = newpath
-    def load_LISE(self):        
-        result, ftype = QFileDialog.getOpenFileNames(self.master,
-           'Load LISE scan files (.txt files):', self.currentpath,
-           'LISE scan (*.txt);;All files (*.*)')
-        if len(result) > 0:
-            self.curve_list.clear_table()
-            templog = load_lise_logs(result)
-            self.takeData(templog)
-            newpath, shortname = os.path.split(result[0])
-            self.conf_update.emit({'PATH_beamline': newpath})
-            self.currentpath = newpath
+            self.currentname = ".".join(shortname.split('.')[:1])
