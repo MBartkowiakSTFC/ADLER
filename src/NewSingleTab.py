@@ -23,6 +23,12 @@ SingleTab is a widget where a single measurement
 into ADLER and analysed.
 """
 
+import os
+import time
+import copy
+from os.path import expanduser
+
+import numpy as np
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, QSize,  QThread
 from PyQt6.QtGui import QFont, QStandardItem
 from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog,   \
@@ -30,15 +36,11 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog,   \
 # from PyQt6 import QtGui, QtCore, QtWidgets
 # from PyQt6 import sip
 from VariablesGUI import VarBox
-from ADLERcalc import NewAdlerCore as AdlerCore
-from ADLERcalc import RixsMeasurement
+from ADLERcalc.AdlerCore import NewAdlerCore as AdlerCore
+from ADLERcalc.DataHandling import RixsMeasurement
 from ExtendGUI import AdlerTab, PeaxisDataModel, PeaxisTableView
+from ADLERplot.Plotter import Plotter
 
-import numpy as np
-import os
-import time
-import copy
-from os.path import expanduser
 
 mpl_scale = 1.0
 mpl_figure_scale = 1.0
@@ -85,320 +87,6 @@ from matplotlib.widgets import Slider
 GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
-
-#### plotting part
-
-def plot1D(pic, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= [],  title = "", autolimits = True, eline = None, efactor = None):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.15       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.9
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (vertical)', labels[0]]
-    # topval = np.nan_to_num(pic).max()
-    # if topval == 0.0:
-    #     topval = 1.0
-    # xxx = axes.plot(pic[:,0], pic[:,1], '-')
-    if eline is not None:
-        if eline > 0:
-            axes.axvline(eline, linestyle = ":")
-            ntext = "Nominal elastic line position = " + str(round(eline, 3)) + '\n'+text
-        else:
-            ntext = text
-    else:
-        ntext = text
-    if efactor is not None:
-        if efactor > 0:
-            ntext = 'Energy scale: ' + str(round(efactor, 3)) + ' meV/channel \n'+ntext
-    for xp, p in enumerate(pic):
-        if len(p[0]) > 2:
-            axes.errorbar(p[:,0], p[:,1], yerr = p[:,2], fmt=':s')
-        else:
-            if len(curve_labels) == len(pic):
-                axes.plot(p[:,0], p[:,1], '-', label = curve_labels[xp])
-            else:
-                axes.plot(p[:,0], p[:,1], '-')
-    axes.grid(True)
-    if label_override[0]:
-        axes.set_xlabel(label_override[0])
-    else:
-        axes.set_xlabel(axlabels[0])
-    if label_override[1]:
-        axes.set_ylabel(label_override[1])
-    else:
-        axes.set_ylabel(axlabels[1])
-    if len(title) > 0:
-        axes.set_title(title)
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    if autolimits:
-        if len(p[0]) > 2:
-            temp_ylim = np.array([ty1, ty2])
-            if ty1 < 0:
-                temp_ylim[0] = 0
-            if ty2 > 2048:
-                temp_ylim[1] = 2048
-            axes.set_ylim(temp_ylim)
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(ntext)
-    # fig.add_axes(axtextf)
-    if len(curve_labels) == len(pic):
-        axes.legend(loc=0)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-
-def plot_new_profiles(separate =[], merged = [], fig = None, text = '', label_override = ["", ""],
-                                    separate_labels= [], merged_labels= [],  title = ""):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Channels','Counts']
-    axes1 = fig.add_subplot(211)
-    axes2 = fig.add_subplot(212)
-    for n, c in enumerate(separate):
-        axes1.plot(c[:,0], c[:,1], '-', label = separate_labels[n])
-    axes1.grid(True)    
-    for n, c in enumerate(merged):
-        axes2.plot(c[:,0], c[:,1], '-', label = merged_labels[n])
-    axes2.grid(True)
-    if label_override[0]:
-        axes1.set_xlabel(label_override[0])
-        axes2.set_xlabel(label_override[0])
-    else:
-        axes1.set_xlabel(labels[0])
-        axes2.set_xlabel(labels[0])
-    if label_override[1]:
-        axes1.set_ylabel(label_override[1])
-        axes2.set_ylabel(label_override[1])
-    else:
-        axes1.set_ylabel(labels[1])
-        axes2.set_ylabel(labels[1])
-    if len(title) > 0:
-        axes1.set_title(title)
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    axes1.legend(loc=0)
-    axes2.legend(loc=0)
-    if trigger:
-        mpl.show()
-    else:
-        fig.canvas.draw()
-
-def plot1D_sliders(pic, ax, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= [],  title = ""):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.15       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.9
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (vertical)', labels[0]]
-    for n, l in enumerate(curve_labels):
-        try:
-            temp = float(l.strip(' eEvV'))
-        except:
-            curve_labels[n] = '-1.0 eV'
-    energies = np.array([float(jab.strip(' eEvV')) for jab in curve_labels])
-    sequence = np.argsort(energies)
-    refs = []
-    maxval = 0.0
-    minval = 1e9
-    # topval = np.nan_to_num(pic).max()
-    # if topval == 0.0:
-    #     topval = 1.0
-    # xxx = axes.plot(pic[:,0], pic[:,1], '-')
-    for rn in sequence:
-        p = pic[rn]
-        l = curve_labels[rn]
-        [ref] = axes.plot(p[:,0], p[:,1], '-', label = l)
-        refs.append(ref)
-        maxval = max(maxval, p[10:-10,1].max())
-        minval = min(minval, p[10:-10,1].min())
-    span = maxval-minval
-    axes.grid(True)
-    if label_override[0]:
-        axes.set_xlabel(label_override[0])
-    else:
-        axes.set_xlabel(axlabels[0])
-    if label_override[1]:
-        axes.set_ylabel(label_override[1])
-    else:
-        axes.set_ylabel(axlabels[1])
-    if len(title) > 0:
-        axes.set_title(title)
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    axes.set_ylim([0.9*minval, 1.1*maxval])
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if len(curve_labels) == len(pic):
-        axes.legend(loc=0)
-    # here we add sliders
-    offset_slider_ax  = fig.add_axes([0.25, 0.15, 0.55, 0.03])#, axisbg=axis_color)
-    offset_slider = Slider(offset_slider_ax, 'Offset', 0.0, 0.2, valinit=0.0)
-    def sliders_on_changed(val):
-        global oldval
-        newval = offset_slider.val * span
-        for n, r in enumerate(sequence):
-            ydata = pic[r][:,1] + n*newval
-            refs[n].set_ydata(ydata)
-        ty1, ty2 = axes.get_ylim()
-        axes.set_ylim([ty1, ty2 + n*(newval-oldval)])
-        fig.canvas.draw_idle()
-        oldval = copy.deepcopy(newval)
-    offset_slider.on_changed(sliders_on_changed)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-
-def plot2D_sliders(pics, ax, outFile = "", fig = None, text = '', interp = 'none', 
-                            axlabels = ['Pixels (horizontal)', 'Pixels (vertical)'],  comap = 'rainbow'): # interp = 'Bessel'):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    pic = pics
-    print(pic.shape, pic.min(), pic.max())
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    # if len(pics) > 1:
-    #     axlabels = ['Photon energy [eV]', 'Energy transfer [eV]']
-    #     comap = 'rainbow'
-    # else:
-    #     axlabels = ['Pixels (horizontal)', 'Pixels (vertical)']
-    #     comap = 'OrRd'
-    topval = np.nan_to_num(pic).max()
-    if topval == 0.0:
-        topval = 1.0
-    abs_maxval = pic.max()
-    abs_minval = pic.min()
-    curr_maxval, curr_minval = pic.max(), pic.min()
-    print(pic.shape, pic.min(), pic.max())
-    xxx = axes.imshow(np.nan_to_num(pic)[::-1,:], extent = [ax[1][0], ax[1][-1],
-                                        ax[0][0], ax[0][-1]], interpolation = interp,
-                                        cmap = mpl.get_cmap(comap), aspect = 'auto',
-                                        vmin = np.percentile(pic, 20), vmax = np.percentile(pic, 90)
-                                        # vmin = 1e-3, vmax = 1.0
-                                        )
-    cb = mpl.colorbar(xxx, ax = xxx.axes, format = '%.1e', pad = 0.02)
-    cb.set_label(labels[0])
-    print(pic.shape, pic.min(), pic.max())
-    # cb.set_clim(-1, 2.0)
-    # xxx.autoscale()
-    # pic2 = pics[1]
-    # axes.contour(np.nan_to_num(pic2), [1e-3*np.nan_to_num(pic2).max()], 
-    #                            extent = [ax[1][0], ax[1][-1],
-    #                                     ax[0][0], ax[0][-1]],
-    #                            aspect = 'auto', linestyles = 'solid', linewidths = 1.0)
-    axes.grid(True)
-    axes.set_xlabel(axlabels[0])
-    axes.set_ylabel(axlabels[1])
-    if len(text) > 0:
-        axes.set_title(text)
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    # axtextf = mpl.axes([0.20, 0.11, 0.10, 0.01], frameon = False) # , axisbg = '0.9')
-    # axtextf.set_yticks([])
-    # axtextf.set_xticks([])
-    # axtextf.set_title(text)
-    # new part: the sliders
-    maxval_slider_ax  = fig.add_axes([0.12, 0.12, 0.55, 0.03])#, axisbg=axis_color)
-    maxval_slider = Slider(maxval_slider_ax, 'Maxval', 0.0, 100.0, valinit=90.0)
-    minval_slider_ax  = fig.add_axes([0.12, 0.04, 0.55, 0.03])#, axisbg=axis_color)
-    minval_slider = Slider(minval_slider_ax, 'Minval', 0.0, 100.0, valinit=20.0)
-    def sliders_on_changed(val):
-        newmax = np.percentile(pic, maxval_slider.val)
-        newmin = np.percentile(pic, minval_slider.val)
-        if newmax >= newmin:
-            xxx.set_clim([newmin, newmax])
-            fig.canvas.draw_idle()
-    maxval_slider.on_changed(sliders_on_changed)
-    minval_slider.on_changed(sliders_on_changed)
-    # buttons!
-    # reset_button_ax = fig.add_axes([0.55, 0.12, 0.1, 0.04])
-    # reset_button = Button(reset_button_ax, 'Reset', hovercolor='0.775')
-    # def reset_button_on_clicked(mouse_event):
-        # curr_maxval = copy.deepcopy(abs_maxval)
-        # curr_minval = copy.deepcopy(abs_minval)
-    # reset_button.on_clicked(reset_button_on_clicked)
-    # # focus
-    # focus_button_ax = fig.add_axes([0.55, 0.04, 0.1, 0.04])
-    # focus_button = Button(focus_button_ax, 'Focus', hovercolor='0.775')
-    # def focus_button_on_clicked(mouse_event):
-        # curr_maxval = curr_maxval * maxval_slider.val
-        # curr_minval = curr_minval * minval_slider.val
-        # maxval_slider.val = 1.0
-        # minval_slider.val = 0.0
-    # focus_button.on_clicked(focus_button_on_clicked)
-    print(pic.shape, pic.min(), pic.max())
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        fig.canvas.draw()
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
 
 #### GUI part
 
@@ -477,6 +165,7 @@ class SingleTab(AdlerTab):
         self.acc_button = accept_button
         # self.progbar = None
         self.canvas, self.figure, self.clayout = canvas
+        self.plotter = Plotter(figure = self.figure)
         self.params = [(loading_variables, "File Loading"),  (line_variables,  "Elastic Line"),
                             (correction_variables,  "Corrections")]
         self.parnames = []
@@ -740,7 +429,7 @@ class SingleTab(AdlerTab):
         self.active_buttons[13:15] = 1
     @pyqtSlot()
     def show_1D_comparison(self):
-        plot_new_profiles(separate =self.core.individual_profiles,
+        self.plotter.plot_new_profiles(separate =self.core.individual_profiles,
                                    merged = [self.core.summed_rawprofile,  self.core.summed_adjusted_rawprofile],
                                     fig = self.figure, text = "Pick the better profile!", label_override = ['Channels',  'Counts'],
                                     separate_labels= self.core.individual_labels, merged_labels= ['Simple Merge',  'Shifted Merge'], 
@@ -754,7 +443,7 @@ class SingleTab(AdlerTab):
         titlebar = "+".join([str(x) for x in np.unique(self.core.energies)]) + " eV, " +\
                     str(self.core.timedata[1].sum()) + " s in " + str(self.core.timedata[0]) + descr +"\n" + \
                     self.core.temp_name
-        plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure, text = titlebar)
+        self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure, text = titlebar)
     @pyqtSlot()
     def trigger_logplotter(self):
         if self.logplotter is not None:
@@ -818,7 +507,7 @@ class SingleTab(AdlerTab):
             titlebar = "+".join([str(x) for x in np.unique(self.core.energies)]) + " eV, " +\
                         str(self.core.timedata[1].sum()) + " s in " + str(self.core.timedata[0]) + descr +"\n" + \
                         self.core.temp_name
-            plot1D([profi], fig = self.figure, text = "",  title = titlebar, 
+            self.plotter.plot1D([profi], fig = self.figure, text = "",  title = titlebar, 
                   label_override = [self.core.chan_override, 'Counts'], curve_labels = ['Data'], eline = self.core.nom_eline, 
                        efactor = (round(self.core.the_object.mev_per_channel, 3)))
         else:
@@ -829,7 +518,7 @@ class SingleTab(AdlerTab):
             titlebar = "+".join([str(x) for x in np.unique(self.core.energies)]) + " eV, " +\
                         str(self.core.timedata[1].sum()) + " s in " + str(self.core.timedata[0]) + descr +"\n" + \
                         self.core.temp_name
-            plot1D([profi,  back,  peak], fig = self.figure, text = text,  title = titlebar, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text,  title = titlebar, 
                   label_override = [self.core.chan_override, 'Counts'], curve_labels = ['Data',  'Background', 'Fit'], eline = self.core.nom_eline, 
                       efactor = (round(self.core.the_object.mev_per_channel, 3)))
     def load_params_from_dict(self, tdict):
@@ -1010,7 +699,7 @@ class SingleTab(AdlerTab):
             if self.core.eline[1] >0:
                 endy = self.core.eline[1]
             # plotax = [(starty,  endy), (self.core.cuts[0],  self.core.cuts[1])]
-            plot1D([curve,  fit], fig = self.figure, text = self.core.temp_name,  title = titlebar, 
+            self.plotter.plot1D([curve,  fit], fig = self.figure, text = self.core.temp_name,  title = titlebar, 
                   label_override = ['Channels',  'Channels'], curve_labels = ['Elastic line position', 'Curvature fit'])
     def fft_filter(self):
         self.block_interface()
@@ -1019,14 +708,14 @@ class SingleTab(AdlerTab):
     @pyqtSlot()
     def after_ccorr(self):
         if self.core.curvature_corrected:
-            plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure, text = self.core.temp_name)
+            self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure, text = self.core.temp_name)
         else:
             self.active_buttons[13:15] = 1
             self.flip_buttons()
     @pyqtSlot()
     def after_fft(self):
         if self.core.fft_applied:
-            plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure, text = self.core.temp_name)
+            self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure, text = self.core.temp_name)
         else:
             self.active_buttons[14:15] = 1
             self.flip_buttons()
@@ -1046,7 +735,7 @@ class SingleTab(AdlerTab):
     @pyqtSlot(object)
     def plot_segment(self, seglist):
         stripe,  plotax = seglist
-        plot1D([stripe], fig = self.figure, title = self.core.temp_name, 
+        self.plotter.plot1D([stripe], fig = self.figure, title = self.core.temp_name, 
                 text = "Horizontal profile, rows " +str(self.core.eline[0]) + " to " + str(self.core.eline[1]), 
                   label_override = ['Channels',  'Counts'], curve_labels = ['stripe 1'])
     def autoeV_profile_button(self):
@@ -1069,7 +758,7 @@ class SingleTab(AdlerTab):
             titlebar = "+".join([str(x) for x in np.unique(self.core.energies)]) + " eV, " +\
                         str(self.core.timedata[1].sum()) + " s in " + str(self.core.timedata[0]) + descr +"\n" + \
                         self.core.temp_name
-            plot1D([profi], fig = self.figure, text = "",  title = titlebar, 
+            self.plotter.plot1D([profi], fig = self.figure, text = "",  title = titlebar, 
                   label_override = ['Energy [eV]',  'Counts'], curve_labels = ['Data'], 
                   efactor = (round(self.core.the_object.mev_per_channel, 3)))
         else:
@@ -1080,7 +769,7 @@ class SingleTab(AdlerTab):
             titlebar = "+".join([str(x) for x in np.unique(self.core.energies)]) + " eV, " +\
                         str(self.core.timedata[1].sum()) + " s in " + str(self.core.timedata[0]) + descr +"\n" + \
                         self.core.temp_name
-            plot1D([profi,  back,  peak], fig = self.figure, text = text,  title = titlebar, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text,  title = titlebar, 
                   label_override = ['Energy transfer [eV]',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'], 
                   efactor = (round(self.core.the_object.mev_per_channel, 3)))
     def merge_files_eV_button(self):

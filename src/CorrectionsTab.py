@@ -22,20 +22,21 @@ for 2D images. The way things have been going so far, it is
 hardly ever used.
 """
 
+import os
+import time
+import copy
+from os.path import expanduser
+
+import numpy as np
 from PyQt6.QtCore import pyqtSlot, pyqtSignal,  QSize,  QThread
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog,   \
                                                 QPushButton,  QVBoxLayout, QHBoxLayout, QFormLayout, QScrollArea
 # from PyQt5 import sip
 from VariablesGUI import VarBox
-from ADLERcalc import NewAdlerCore as AdlerCore
+from ADLERcalc.AdlerCore import NewAdlerCore as AdlerCore
 from ExtendGUI import AdlerTab
-
-import numpy as np
-import os
-import time
-import copy
-from os.path import expanduser
+from ADLERplot.Plotter import Plotter
 
 mpl_scale = 1.0
 mpl_figure_scale = 1.0
@@ -68,11 +69,6 @@ else:
                     pass
     source.close()
 
-import matplotlib.pyplot as mpl
-# from matplotlib.backends import qt_compat
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar2QTAgg
-from matplotlib.widgets import Slider
 
 # this is a Windows thing
 # ctypes.windll.kernel32.SetDllDirectoryW('.')
@@ -82,259 +78,6 @@ from matplotlib.widgets import Slider
 GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
-
-#### plotting part
-
-def plot1D(pic, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= []):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (vertical)', labels[0]]
-    # topval = np.nan_to_num(pic).max()
-    # if topval == 0.0:
-    #     topval = 1.0
-    # xxx = axes.plot(pic[:,0], pic[:,1], '-')
-    for xp, p in enumerate(pic):
-        if len(p[0]) > 2:
-            axes.errorbar(p[:,0], p[:,1], yerr = p[:,2], fmt='-s')
-        else:
-            if len(curve_labels) == len(pic):
-                axes.plot(p[:,0], p[:,1], '-', label = curve_labels[xp])
-            else:
-                axes.plot(p[:,0], p[:,1], '-')
-    axes.grid(True)
-    if label_override[0]:
-        axes.set_xlabel(label_override[0])
-    else:
-        axes.set_xlabel(axlabels[0])
-    if label_override[1]:
-        axes.set_ylabel(label_override[1])
-    else:
-        axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    if len(p[0]) > 2:
-        temp_ylim = np.array([ty1, ty2])
-        if ty1 < 0:
-            temp_ylim[0] = 0
-        if ty2 > 2048:
-            temp_ylim[1] = 2048
-        axes.set_ylim(temp_ylim)
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    # fig.add_axes(axtextf)
-    if len(curve_labels) == len(pic):
-        axes.legend(loc=0)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-
-def plot1D_sliders(pic, ax, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= []):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (vertical)', labels[0]]
-    for n, l in enumerate(curve_labels):
-        try:
-            temp = float(l.strip(' eEvV'))
-        except:
-            curve_labels[n] = '-1.0 eV'
-    energies = np.array([float(jab.strip(' eEvV')) for jab in curve_labels])
-    sequence = np.argsort(energies)
-    refs = []
-    maxval = 0.0
-    minval = 1e9
-    # topval = np.nan_to_num(pic).max()
-    # if topval == 0.0:
-    #     topval = 1.0
-    # xxx = axes.plot(pic[:,0], pic[:,1], '-')
-    for rn in sequence:
-        p = pic[rn]
-        l = curve_labels[rn]
-        [ref] = axes.plot(p[:,0], p[:,1], '-', label = l)
-        refs.append(ref)
-        maxval = max(maxval, p[10:-10,1].max())
-        minval = min(minval, p[10:-10,1].min())
-    span = maxval-minval
-    axes.grid(True)
-    if label_override[0]:
-        axes.set_xlabel(label_override[0])
-    else:
-        axes.set_xlabel(axlabels[0])
-    if label_override[1]:
-        axes.set_ylabel(label_override[1])
-    else:
-        axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    axes.set_ylim([0.9*minval, 1.1*maxval])
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if len(curve_labels) == len(pic):
-        axes.legend(loc=0)
-    # here we add sliders
-    offset_slider_ax  = fig.add_axes([0.25, 0.15, 0.55, 0.03])#, axisbg=axis_color)
-    offset_slider = Slider(offset_slider_ax, 'Offset', 0.0, 0.2, valinit=0.0)
-    def sliders_on_changed(val):
-        global oldval
-        newval = offset_slider.val * span
-        for n, r in enumerate(sequence):
-            ydata = pic[r][:,1] + n*newval
-            refs[n].set_ydata(ydata)
-        ty1, ty2 = axes.get_ylim()
-        axes.set_ylim([ty1, ty2 + n*(newval-oldval)])
-        fig.canvas.draw_idle()
-        oldval = copy.deepcopy(newval)
-    offset_slider.on_changed(sliders_on_changed)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-
-def plot2D_sliders(pics, ax, outFile = "", fig = None, text = '', interp = 'none'): # interp = 'Bessel'):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    pic = pics
-    print(pic.shape, pic.min(), pic.max())
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    if len(pics) > 1:
-        axlabels = ['Photon energy [eV]', 'Energy transfer [eV]']
-        comap = 'rainbow'
-    else:
-        axlabels = ['Pixels (horizontal)', 'Pixels (vertical)']
-        comap = 'OrRd'
-    topval = np.nan_to_num(pic).max()
-    if topval == 0.0:
-        topval = 1.0
-    abs_maxval = pic.max()
-    abs_minval = pic.min()
-    curr_maxval, curr_minval = pic.max(), pic.min()
-    print(pic.shape, pic.min(), pic.max())
-    xxx = axes.imshow(np.nan_to_num(pic)[::-1,:], extent = [ax[1][0], ax[1][-1],
-                                        ax[0][0], ax[0][-1]], interpolation = interp,
-                                        cmap = mpl.get_cmap(comap), aspect = 'auto',
-                                        vmin = np.percentile(pic, 20), vmax = np.percentile(pic, 90)
-                                        # vmin = 1e-3, vmax = 1.0
-                                        )
-    cb = mpl.colorbar(xxx, ax = xxx.axes, format = '%.1e', pad = 0.02)
-    cb.set_label(labels[0])
-    print(pic.shape, pic.min(), pic.max())
-    # cb.set_clim(-1, 2.0)
-    # xxx.autoscale()
-    # pic2 = pics[1]
-    # axes.contour(np.nan_to_num(pic2), [1e-3*np.nan_to_num(pic2).max()], 
-    #                            extent = [ax[1][0], ax[1][-1],
-    #                                     ax[0][0], ax[0][-1]],
-    #                            aspect = 'auto', linestyles = 'solid', linewidths = 1.0)
-    axes.grid(True)
-    axes.set_xlabel(axlabels[0])
-    axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    # axtextf = mpl.axes([0.20, 0.11, 0.10, 0.01], frameon = False) # , axisbg = '0.9')
-    # axtextf.set_yticks([])
-    # axtextf.set_xticks([])
-    # axtextf.set_title(text)
-    # new part: the sliders
-    maxval_slider_ax  = fig.add_axes([0.12, 0.12, 0.55, 0.03])#, axisbg=axis_color)
-    maxval_slider = Slider(maxval_slider_ax, 'Maxval', 0.0, 100.0, valinit=90.0)
-    minval_slider_ax  = fig.add_axes([0.12, 0.04, 0.55, 0.03])#, axisbg=axis_color)
-    minval_slider = Slider(minval_slider_ax, 'Minval', 0.0, 100.0, valinit=20.0)
-    def sliders_on_changed(val):
-        newmax = np.percentile(pic, maxval_slider.val)
-        newmin = np.percentile(pic, minval_slider.val)
-        if newmax >= newmin:
-            xxx.set_clim([newmin, newmax])
-            fig.canvas.draw_idle()
-    maxval_slider.on_changed(sliders_on_changed)
-    minval_slider.on_changed(sliders_on_changed)
-    # buttons!
-    # reset_button_ax = fig.add_axes([0.55, 0.12, 0.1, 0.04])
-    # reset_button = Button(reset_button_ax, 'Reset', hovercolor='0.775')
-    # def reset_button_on_clicked(mouse_event):
-        # curr_maxval = copy.deepcopy(abs_maxval)
-        # curr_minval = copy.deepcopy(abs_minval)
-    # reset_button.on_clicked(reset_button_on_clicked)
-    # # focus
-    # focus_button_ax = fig.add_axes([0.55, 0.04, 0.1, 0.04])
-    # focus_button = Button(focus_button_ax, 'Focus', hovercolor='0.775')
-    # def focus_button_on_clicked(mouse_event):
-        # curr_maxval = curr_maxval * maxval_slider.val
-        # curr_minval = curr_minval * minval_slider.val
-        # maxval_slider.val = 1.0
-        # minval_slider.val = 0.0
-    # focus_button.on_clicked(focus_button_on_clicked)
-    print(pic.shape, pic.min(), pic.max())
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        fig.canvas.draw()
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
 
 #### GUI part
 
@@ -407,6 +150,7 @@ class CorrectionsTab(AdlerTab):
         self.canvas, self.figure, self.clayout = canvas
         self.params = [(loading_variables, "File Loading"),  (line_variables,  "Elastic Line"),
                                (energy_variables,  "Energy Calibration"),  (correction_variables,  "Corrections")]
+        self.plotter = Plotter(figure = self.figure)
         self.parnames = []
         self.pardict = {}
         self.log = log
@@ -569,11 +313,11 @@ class CorrectionsTab(AdlerTab):
     @pyqtSlot()
     def show_1D_comparison(self):
         profs = [self.core.summed_rawprofile,  self.core.summed_adjusted_rawprofile]
-        plot1D(profs, fig = self.figure, text = "Pick the better profile!", 
+        self.plotter.plot1D(profs, fig = self.figure, text = "Pick the better profile!", 
             label_override = ['Channels',  'Counts'], curve_labels = ['Simple Merge',  'Shifted Merge'])
     @pyqtSlot()
     def show_2D_plot(self):
-        plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
+        self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
     @pyqtSlot(object)
     def plot_fitting_results(self,  fittinglist):
         profi, back, peak, fitpars, text = fittinglist
@@ -581,10 +325,10 @@ class CorrectionsTab(AdlerTab):
             self.logger('No data available to be processed.')
             return None
         elif back is None or peak is None or text is None:
-            plot1D([profi], fig = self.figure, text = "", 
+            self.plotter.plot1D([profi], fig = self.figure, text = "", 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data'])
         else:
-            plot1D([profi,  back,  peak], fig = self.figure, text = text, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text, 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'])
     @pyqtSlot(object)
     def plot_energy_results(self, fittinglist):
@@ -593,10 +337,10 @@ class CorrectionsTab(AdlerTab):
             self.logger('No data available to be processed.')
             return None
         elif back is None or peak is None or text is None:
-            plot1D([profi], fig = self.figure, text = "", 
+            self.plotter.plot1D([profi], fig = self.figure, text = "", 
                   label_override = ['Energy [eV]',  'Counts'], curve_labels = ['Data'])
         else:
-            plot1D([profi,  back,  peak], fig = self.figure, text = text, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text, 
                   label_override = ['Energy transfer [eV]',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'])
     @pyqtSlot(object)
     def plot_curve_profile(self,  curvelist):
@@ -608,7 +352,7 @@ class CorrectionsTab(AdlerTab):
             if self.core.eline[1] >0:
                 endy = self.core.eline[1]
             # plotax = [(starty,  endy), (self.core.cuts[0],  self.core.cuts[1])]
-            plot1D([curve,  fit], fig = self.figure, text = "", 
+            self.plotter.plot1D([curve,  fit], fig = self.figure, text = "", 
                   label_override = ['Channels',  'Channels'], curve_labels = ['Elastic line position', 'Curvature fit'])
             rkey= ['poly']
             rval = {'poly':self.core.curvature_params}
@@ -778,7 +522,7 @@ class CorrectionsTab(AdlerTab):
         forplot = self.core.fft_plots[-1].copy()
         fpmax = forplot[:, 1].max()
         forplot = forplot[np.where(forplot[:, 1] < fpmax)]
-        plot1D([forplot], fig = self.figure, text = "Normalised Fourier Transform plot", 
+        self.plotter.plot1D([forplot], fig = self.figure, text = "Normalised Fourier Transform plot", 
                 label_override = ['Channels$^{-1}$',  'Signal'], curve_labels = ['Sum'])
     def fft_filter(self):
         self.block_interface()
@@ -787,14 +531,14 @@ class CorrectionsTab(AdlerTab):
     @pyqtSlot()
     def after_ccorr(self):
         if self.core.curvature_corrected:
-            plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
+            self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
         else:
             self.active_buttons[11:13] = 1
             self.flip_buttons()
     @pyqtSlot()
     def after_fft(self):
         if self.core.fft_applied:
-            plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
+            self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
         else:
             self.active_buttons[12:13] = 1
             self.flip_buttons()
@@ -805,7 +549,7 @@ class CorrectionsTab(AdlerTab):
     @pyqtSlot(object)
     def plot_segment(self, seglist):
         stripe,  plotax = seglist
-        plot1D([stripe], fig = self.figure,
+        self.plotter.plot1D([stripe], fig = self.figure,
                 text = "Horizontal profile, rows " +str(self.core.eline[0]) + " to " + str(self.core.eline[1]), 
                   label_override = ['Channels',  'Counts'], curve_labels = ['stripe 1'])
     @pyqtSlot(object)
@@ -813,6 +557,6 @@ class CorrectionsTab(AdlerTab):
         data,  plotax = seglist
         hist, binlims = data
         stripe = np.column_stack([(binlims[:-1] + binlims[1:])*0.5, hist])
-        plot1D([stripe], fig = self.figure,
+        self.plotter.plot1D([stripe], fig = self.figure,
                 text = "Value distribution in the detector segment", 
                   label_override = ['Counts',  'Occurences'], curve_labels = ['detector values'])

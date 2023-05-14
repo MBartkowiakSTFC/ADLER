@@ -38,7 +38,9 @@ from LogviewerTab import LogviewerTab
 from NewSingleTab import SingleTab, mpl_figure_scale, mpl, \
                                 FigureCanvasQTAgg, NavigationToolbar2QTAgg, plot1D
 from FileFinder import header_read
-from ADLERcalc import precise_merge, read_1D_curve, simplify_number_range, resource_path
+from ADLERcalc.arrayUtils import precise_merge
+from ADLERcalc.ioUtils import read_1D_curve, simplify_number_range, resource_path
+from ADLERplot.Plotter import Plotter
 # from geom_tools import normalise, length, arb_rotation
 
 last_object = 1
@@ -67,6 +69,7 @@ class MeasPointCompareDialog(QDialog):
         self.layout.addWidget(self.rightside)
         self.canvas = can
         self.figure = fig
+        self.plotter = Plotter(figure = self.figure)
         self.datanode = dnode
         self.boolvals = np.array(6*[False])
         self.populateCbox()
@@ -115,7 +118,7 @@ class MeasPointCompareDialog(QDialog):
         for n in range(len(self.boolvals)):
             if self.boolvals[n]:
                 curves.append(np.column_stack([xaxis, values[:, 2*n:2*n+2]]))
-        plot1D(curves, outFile = "", fig = self.figure, text = '', label_override = [xlabel, ""], curve_labels= [],  title = "", 
+        self.plotter.plot1D(curves, outFile = "", text = '', label_override = [xlabel, ""], curve_labels= [],  title = "", 
                  autolimits = False)
 
 class MeasPointMergeDialog(QDialog):

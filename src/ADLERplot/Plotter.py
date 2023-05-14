@@ -37,6 +37,8 @@ class Plotter:
         self.figure = figure
         comap = kwargs.__getitem__('colourmap', 'OrRd')
         self.colourmap = mpl.get_cmap(comap)
+        self.labels1d = kwargs.__getitem__('labels1d', ['Counts', 'Counts'])
+        self.labels2d = kwargs.__getitem__('labels2d', ['Pixels', 'Pixels'])
 
     def plot1D(self, pic, outFile = "", fig = None, text = '',
                     label_override = ["", ""], curve_labels= [], 
@@ -47,7 +49,7 @@ class Plotter:
         else:
             self.figure.clear()
             trigger = False
-        labels = ['Counts','Counts']
+        labels = self.labels1d
         symbolcount = 0
         handles = []
         ptlabels = []
@@ -122,7 +124,7 @@ class Plotter:
         else:
             self.figure.clear()
             trigger = False
-        labels = ['Counts','Counts']
+        labels = self.labels1d
         symbolcount = 0
         handles = []
         ptlabels = []
@@ -202,7 +204,7 @@ class Plotter:
         else:
             self.figure.clear()
             trigger = False
-        labels = ['Counts','Counts']
+        labels = self.labels1d
         axes = self.figure.add_subplot(111)
         mainpos = axes.get_position()
         mainpos.y0 = 0.25
@@ -349,7 +351,7 @@ class Plotter:
         # mainpos.ymax = 1.0
         mainpos.y1 = 0.99
         axes.set_position(mainpos)
-        axlabels = labels
+        axlabels = self.labels2d
         comap = 'rainbow'
         topval = np.nan_to_num(pic).max()
         if topval == 0.0:
