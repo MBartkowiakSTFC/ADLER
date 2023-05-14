@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
   "numpy",
   "scipy",
+  "matplotlib",
   "h5py",
   "astropy",
   "PyQt6",
