@@ -44,9 +44,25 @@ oldval = 0.0
 # has_voigt = False
 # from scipy.special import wofz
 
-    
-    
-def discrete_rebin(data, offset = 0.0, padding = 6, nsubdiv = 100):
+
+def discrete_rebin(data: np.array, offset : float = 0.0,
+                   nsubdiv : int = 100) -> np.array:
+    """Rebins an array. It uses a finite number of discrete elements
+    to enable the rebining, imposing a limit on the smallest possible
+    step by which the data points can be shifted.
+
+    It was meant to be faster this way, but I am not sure now.
+
+    Arguments:
+        data -- a np.array of histogram bins
+
+    Keyword Arguments:
+        offset -- change of the x axis (default: {0.0})
+        nsubdiv -- number of subdivisions of the bin (default: {100})
+
+    Returns:
+        np.array - a histogram with bin limits shifted by offset.
+    """
     startlen = len(data) # + 2*padding
     newdata = np.ones((startlen, nsubdiv)) / nsubdiv
     newdata = (newdata.T * data).T
@@ -70,162 +86,7 @@ def discrete_rebin(data, offset = 0.0, padding = 6, nsubdiv = 100):
     # for n in range(len(data)):
     #     target[n] = newdata[int((offset+n)*nsubdiv):int((offset+n+1)*nsubdiv)].sum()
     return target
-    
-def continuous_rebin(indata, offset = 0.0):
-    if len(indata.shape) == 1:
-        data = np.column_stack([np.arange(len(indata)), indata])
-        returnYonly = True
-    else:
-        data = indata
-        returnYonly = False
-    newdata = data.copy()
-    newdata[:, 1:] = 0.0
-    newdata[:, 0] -= offset
-    the_object = MergeCurves(data, newdata, tpool = None, pbar = None, mthreads = 1)
-    the_object.runit()
-    target = the_object.postprocess()
-    if returnYonly:
-        target = target[:, 1]
-    return target
 
-def merge2curves_old(source, target):
-    """
-    This function will treat two curves with different binning as histograms,
-    and merge the data proportionally to the bin overlap.
-    The input curves have to be sorted in ascending order along the x axis.
-    """
-    xs1, ys1 = source[:,0], source[:,1]
-    xs2, ys2 = target[:,0], target[:,1]
-    step1 = xs1[1:] - xs1[:-1]
-    step1 = np.concatenate([step1[:1], step1, step1[-1:]])
-    lowlim1 = xs1 - 0.5*step1[:-1]
-    highlim1 = xs1 + 0.5*step1[1:]
-    # print('step1: ', step1.min(), step1.max(), step1.mean())
-    # now we have low limits, high limits and middle for each bin, plus the bin size
-    step2 = xs2[1:] - xs2[:-1]
-    step2 = np.concatenate([step2[:1], step2, step2[-1:]])
-    lowlim2 = xs2 - 0.5*step2[:-1]
-    highlim2 = xs2 + 0.5*step2[1:]
-    # print('step2: ', step2.min(), step2.max(), step2.mean())
-    # now we can begin
-    newy = ys2.copy()
-    lowest_n = 0
-    highest_n = len(ys2)-1
-    lowest_m=0
-    highest_m=len(ys1)-1
-    # acc_n = []
-    for n in np.arange(len(xs2)):
-        m1 = np.argmax(highlim1 > lowlim2[n])
-        m2 = np.argmax(lowlim1 > highlim2[n])
-        if highlim1[0] > lowlim2[n]:
-            m1 = 0
-        elif highlim1[-1] < lowlim2[n]:
-            m1 = len(highlim1) -1
-        elif highlim1[-2] < lowlim2[n]:
-            m1 = len(highlim1) -2
-        if lowlim1[0] > highlim2[n]:
-            m2 = 0
-        elif lowlim1[-1] < highlim2[n]:
-            m2 = len(lowlim1)-1
-        elif lowlim1[-2] < highlim2[n]:
-            m2 = len(lowlim1)-2
-        # now m1 is the first bin in the source curve that overlaps with the current bin
-        # and m2 is the first bin after that that doesn't
-        for m in np.arange(m1-2,m2+2):
-            if (m > highest_m) or (m < lowest_m):
-                continue
-            if (highlim1[m] < lowlim2[n]) or (lowlim1[m] > highlim2[n]):
-                continue
-            if lowlim1[m] <= lowlim2[n]:
-                if highlim1[m] > highlim2[n]:
-                    newy[n] += ys1[m]*(highlim2[n]-lowlim2[n])/step1[m]
-                else:
-                    newy[n] += ys1[m]*(highlim1[m]-lowlim2[n])/step1[m]
-            else:
-                if highlim1[m] > highlim2[n]:
-                    newy[n] += ys1[m]*(highlim2[n]-lowlim1[m])/step1[m]
-                else:
-                    newy[n] += ys1[m]
-            # factor = (highlim1[m] - max(lowlim2[n],lowlim1[m])/step1[m]
-            # altfactor = (min(highlim2[n],highlim1[m]) - lowlim1[m])/step1[m]
-    # acc_n = np.array(acc_n)
-    # print('acc_n: ', acc_n.min(0), acc_n.max(0), acc_n.mean(0))
-    return np.column_stack([xs2,newy])
-
-def merge2curves_errors_old(source, target):
-    """
-    This function will treat two curves with different binning as histograms,
-    and merge the data proportionally to the bin overlap.
-    The input curves have to be sorted in ascending order along the x axis.
-    """
-    xs1, ys1, errs1 = source[:,0], source[:,1], source[:,2]**2
-    xs2, ys2, errs2 = target[:,0], target[:,1], target[:,2]**2
-    # xs1 = xs1[np.where(np.abs(xs1))]
-    step1 = xs1[1:] - xs1[:-1]
-    print("Steps min, max: ",  step1.min(),  step1.max())
-    step1 = np.concatenate([step1[:1], step1, step1[-1:]])
-    lowlim1 = xs1 - 0.5*step1[:-1]
-    highlim1 = xs1 + 0.5*step1[1:]
-    # print('step1: ', step1.min(), step1.max(), step1.mean())
-    # now we have low limits, high limits and middle for each bin, plus the bin size
-    step2 = xs2[1:] - xs2[:-1]
-    step2 = np.concatenate([step2[:1], step2, step2[-1:]])
-    lowlim2 = xs2 - 0.5*step2[:-1]
-    highlim2 = xs2 + 0.5*step2[1:]
-    # print('step2: ', step2.min(), step2.max(), step2.mean())
-    # now we can begin
-    newy = ys2.copy()
-    newerr = errs2.copy()
-    lowest_n = 0
-    highest_n = len(ys2)-1
-    lowest_m=0
-    highest_m=len(ys1)-1
-    # acc_n = []
-    for n in np.arange(len(xs2)):
-        m1 = np.argmax(highlim1 > lowlim2[n])
-        m2 = np.argmax(lowlim1 > highlim2[n])
-        if highlim1[0] > lowlim2[n]:
-            m1 = 0
-        elif highlim1[-1] < lowlim2[n]:
-            m1 = len(highlim1) -1
-        elif highlim1[-2] < lowlim2[n]:
-            m1 = len(highlim1) -2
-        if lowlim1[0] > highlim2[n]:
-            m2 = 0
-        elif lowlim1[-1] < highlim2[n]:
-            m2 = len(lowlim1)-1
-        elif lowlim1[-2] < highlim2[n]:
-            m2 = len(lowlim1)-2
-        # now m1 is the first bin in the source curve that overlaps with the current bin
-        # and m2 is the first bin after that that doesn't
-        for m in np.arange(m1-2,m2+2):
-            if (m > highest_m) or (m < lowest_m):
-                continue
-            if (highlim1[m] < lowlim2[n]) or (lowlim1[m] > highlim2[n]):
-                continue
-            if lowlim1[m] <= lowlim2[n]:
-                if highlim1[m] > highlim2[n]:
-                    frac = (highlim2[n]-lowlim2[n])/step1[m]
-                    newy[n] += ys1[m]*frac
-                    newerr[n] += errs1[m]*frac
-                else:
-                    frac = (highlim1[m]-lowlim2[n])/step1[m]
-                    newy[n] += ys1[m]*frac
-                    newerr[n] += errs1[m]*frac
-            else:
-                if highlim1[m] > highlim2[n]:
-                    frac = (highlim2[n]-lowlim1[m])/step1[m]
-                    newy[n] += ys1[m]*frac
-                    newerr[n] += errs1[m]*frac
-                else:
-                    newy[n] += ys1[m]
-                    newerr[n] += errs1[m]
-            # factor = (highlim1[m] - max(lowlim2[n],lowlim1[m])/step1[m]
-            # altfactor = (min(highlim2[n],highlim1[m]) - lowlim1[m])/step1[m]
-    # acc_n = np.array(acc_n)
-    # print('acc_n: ', acc_n.min(0), acc_n.max(0), acc_n.mean(0))
-    return np.column_stack([xs2,newy, np.sqrt(newerr)])
-    
 def merge2curves(source, target):
     """
     This function will treat two curves with different binning as histograms,
@@ -297,94 +158,40 @@ def merge2curves_errors(source, target):
     results = np.column_stack([xs2,newy[:-1], np.sqrt(newerr[:-1])])
     return results
 
-def normalising_merge_curves(sources, target):
-    """
-    This function will treat two curves with different binning as histograms,
-    and merge the data proportionally to the bin overlap.
-    The input curves have to be sorted in ascending order along the x axis.
-    """
-    xs2, ys2 = target[:,0], target[:,1]
-    # now we have low limits, high limits and middle for each bin, plus the bin size
-    step2 = xs2[1:] - xs2[:-1]
-    step2 = np.concatenate([step2[:1], step2, step2[-1:]])
-    lowlim2 = xs2 - 0.5*step2[:-1]
-    highlim2 = xs2 + 0.5*step2[1:]
-    newy = ys2.copy()
-    newnorm = np.zeros(newy.shape)
-    for source in sources:
-        xs1, ys1 = source[:,0], source[:,1]
-        step1 = xs1[1:] - xs1[:-1]
-        step1 = np.concatenate([step1[:1], step1, step1[-1:]])
-        lowlim1 = xs1 - 0.5*step1[:-1]
-        highlim1 = xs1 + 0.5*step1[1:]
-        # print('step1: ', step1.min(), step1.max(), step1.mean())
-        # print('step2: ', step2.min(), step2.max(), step2.mean())
-        # now we can begin
-        lowest_n = 0
-        highest_n = len(ys2)-1
-        lowest_m=0
-        highest_m=len(ys1)-1
-        # acc_n = []
-        for n in np.arange(len(xs2)):
-            m1 = np.argmax(highlim1 > lowlim2[n])
-            m2 = np.argmax(lowlim1 > highlim2[n])
-            if highlim1[0] > lowlim2[n]:
-                m1 = 0
-            elif highlim1[-1] < lowlim2[n]:
-                m1 = len(highlim1) -1
-            elif highlim1[-2] < lowlim2[n]:
-                m1 = len(highlim1) -2
-            if lowlim1[0] > highlim2[n]:
-                m2 = 0
-            elif lowlim1[-1] < highlim2[n]:
-                m2 = len(lowlim1)-1
-            elif lowlim1[-2] < highlim2[n]:
-                m2 = len(lowlim1)-2
-            # now m1 is the first bin in the source curve that overlaps with the current bin
-            # and m2 is the first bin after that that doesn't
-            for m in np.arange(m1-2,m2+2):
-                if (m > highest_m) or (m < lowest_m):
-                    continue
-                if (highlim1[m] < lowlim2[n]) or (lowlim1[m] > highlim2[n]):
-                    continue
-                if lowlim1[m] <= lowlim2[n]:
-                    if highlim1[m] > highlim2[n]:
-                        frac = (highlim2[n]-lowlim2[n])/step1[m]
-                        newy[n] += ys1[m]*frac
-                        newnorm[n] += frac
-                    else:
-                        frac = (highlim1[m]-lowlim2[n])/step1[m]
-                        newy[n] += ys1[m]*frac
-                        newnorm[n] += frac
-                else:
-                    if highlim1[m] > highlim2[n]:
-                        frac = (highlim2[n]-lowlim1[m])/step1[m]
-                        newy[n] += ys1[m]*frac
-                        newnorm[n] += frac
-                    else:
-                        newy[n] += ys1[m]
-                        newnorm[n] += 1.0
-                # factor = (highlim1[m] - max(lowlim2[n],lowlim1[m])/step1[m]
-                # altfactor = (min(highlim2[n],highlim1[m]) - lowlim1[m])/step1[m]
-        # acc_n = np.array(acc_n)
-        # print('acc_n: ', acc_n.min(0), acc_n.max(0), acc_n.mean(0))
-    return np.column_stack([xs2,newy/newnorm])
-
 
 def shgo_profile_offsets(args,  data,  to_match, tpoolin = None, pbarin = None,  maxthreads = 1):
-#    prec30 = np.percentile(to_match[:, 1], 30)
-#    prec100 = to_match[:, 1].max()
-#    A = np.percentile(data[:, 1], 30)
-#    B = data[:, 1].max()
-#    N = (A-B)/(prec30-prec100)
-#    M = (A+B-N*(prec30 + prec100))/2.0
-#    data[:, 1] *= N
-#    data[:, 1] += M
+    """This is a wrapper for quick_match_profiles, to allow the function
+    to be called from the SHGO optimiser.
+
+    Arguments:
+        args -- offset between the profiles. To be optimised.
+        data -- profile that is being shifted
+        to_match -- reference profile
+
+    Keyword Arguments:
+        tpoolin -- an optional threadpool instance (default: {None})
+        pbarin -- an optional progress bar instance (default: {None})
+        maxthreads -- upper limit on the number of threads (default: {1})
+
+    Returns:
+        Least square sum of the profile difference, which is the fitting cost function.
+    """
     retval = quick_match_profiles(data,  to_match, args[0],  tpoolin, pbarin,  maxthreads)
     return (retval**2).sum()
 
 
 def scaling_fit(args, data, to_match):
+    """Applies a linear function to an array, and calculates the difference
+    between the result and a reference array.
+
+    Arguments:
+        args -- a list of floats: linear function parameters
+        data -- the array to be rescaled
+        to_match -- the reference array
+
+    Returns:
+        np.array - difference between the transformed and reference arrays
+    """
     temp = args[0] * data + args[1]
     return temp - to_match
 
@@ -394,8 +201,6 @@ def quick_match_profiles(data,  to_match, xshift = 0.0,  tpoolin = None, pbarin 
     tempdat[:, 0] -= xshift
     temptarget = to_match.copy()
     temptarget[:, 1] = 0.0
-    # rebinned = merge2curves(tempdat,  temptarget)
-    # the_object = MergeCurves(tempdat,  temptarget,  tpool = tpoolin,  pbar = pbarin)
     the_object = MergeCurves(tempdat,  temptarget, None,  pbar = pbarin,  mthreads = maxthreads)
     the_object.runit()
     rebinned = the_object.postprocess()
@@ -414,8 +219,6 @@ def profile_offsets(args,  data,  to_match, tpoolin = None, pbarin = None,  maxt
     tempdat[:, 1] += yshift
     temptarget = to_match.copy()
     temptarget[:, 1] = 0.0
-    # rebinned = merge2curves(tempdat,  temptarget)
-    # the_object = MergeCurves(tempdat,  temptarget,  tpool = tpoolin,  pbar = pbarin)
     the_object = MergeCurves(tempdat,  temptarget, None,  pbar = pbarin,  mthreads = maxthreads)
     the_object.runit()
     rebinned = the_object.postprocess()
