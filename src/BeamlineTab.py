@@ -46,6 +46,10 @@ font_scale = 1.0
 last_dir_saved = expanduser("~")
 MAX_THREADS = 1
 
+GlobFont = QFont('Sans Serif', int(12*font_scale))
+
+oldval = 0.0
+
 try:
     source = open(os.path.join(expanduser("~"),'.ADLconfig.txt'), 'r')
 except:
@@ -259,6 +263,7 @@ class BeamlineTab(AdlerTab):
         self.filelist = None
         self.fwhm_n2, self.fwhm_neon,  self.nlines_edge = None, None, None
         self.currentpath = startpath
+        self.plotter = Plotter(figure = self.figure)
         self.update_fitpars()
         # self.curve_list.gotvals.connect(self.core.take_table_values)
         # self.flip_buttons()
@@ -393,7 +398,7 @@ class BeamlineTab(AdlerTab):
             datset = np.column_stack([xax, ds[1][:len(xax)]])
             axlabels.append([xlab, ds[0]])
             datsets.append(datset)
-        plot1D_grid(datsets, fig = self.figure, text = '', label_override = axlabels)
+        self.plotter.plot1D_grid(datsets, fig = self.figure, text = '', label_override = axlabels)
     def fit_neon(self):
         x, y, d = self.curve_list.return_values()
         if len(x) == 0 or len(y) == 0:
@@ -413,7 +418,7 @@ class BeamlineTab(AdlerTab):
                   'Peak positions = ' + ", ".join([str(x) for x in np.round(peak_pos, 3)]) + '\n'+\
                   'Fit Quality = ' + str(round(1.0/GOF, 3))
         self.logger('Neon fitting results:\n'+res_text)
-        plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
+        self.plotter.plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
                   text = res_text, 
                   label_override = [xlab, ylab], curve_labels= ['Data', 'Fit'], 
                   legend_pos = 0)
@@ -436,7 +441,7 @@ class BeamlineTab(AdlerTab):
                   'Peak positions = ' + ", ".join([str(x) for x in np.round(peak_pos, 3)]) + '\n'+\
                   'Fit Quality = ' + str(round(1.0/GOF, 3))
         self.logger('Nitrogen fitting results:\n'+res_text)
-        plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
+        self.plotter.plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
                   text = res_text, 
                   label_override = [xlab, ylab], curve_labels= ['Data', 'Fit'], 
                   legend_pos = 0)
@@ -453,7 +458,7 @@ class BeamlineTab(AdlerTab):
             profile, edge_pos, edge_width,  GOF = fit_edge_profile(np.column_stack([xpoints, ypoints]), nlines = self.nlines_edge)
         except:
             profile, edge_pos, edge_width,  GOF = np.zeros(xpoints.shape),  -1.0, -1.0, 1e9
-        plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
+        self.plotter.plot1D([np.column_stack([xpoints, ypoints]), np.column_stack([xpoints, profile])], outFile = "", fig = self.figure,
                   text = 'Edge position = '+str(round(edge_pos, 4))+'\n'+'Edge width = '+str(round(edge_width, 4)) + '\n'+
                   'Fit Quality = ' + str(round(1.0/GOF, 3)), 
                   label_override = [xlab, ylab], curve_labels= ['Data', 'Fit'], 
@@ -485,7 +490,7 @@ class BeamlineTab(AdlerTab):
             norm[xind, yind] += 1
         grid /= norm
         grid = np.nan_to_num(grid)
-        plot2D_sliders(grid.T, [(ypoints[0], ypoints[-1]), (xpoints[0], xpoints[-1])], fig = self.figure, text = dlab, interp = 'none', 
+        self.plotter.plot2D_sliders(grid.T, [(ypoints[0], ypoints[-1]), (xpoints[0], xpoints[-1])], fig = self.figure, text = dlab, interp = 'none', 
                                labels = [xlab,ylab])
     def clear_list(self):
         self.curve_list.clear_table()

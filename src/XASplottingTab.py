@@ -75,11 +75,11 @@ else:
                     pass
     source.close()
 
-import matplotlib.pyplot as mpl
-# from matplotlib.backends import qt_compat
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar2QTAgg
-from matplotlib.widgets import Slider
+# import matplotlib.pyplot as mpl
+# # from matplotlib.backends import qt_compat
+# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+# from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar2QTAgg
+# from matplotlib.widgets import Slider
 
 # this is a Windows thing
 # ctypes.windll.kernel32.SetDllDirectoryW('.')
@@ -312,6 +312,7 @@ class XASplottingTab(AdlerTab):
         self.parnames = []
         self.pardict = {}
         self.filelist = None
+        self.plotter = Plotter(figure = self.figure)
         # self.destroyed.connect(self.cleanup)
         self.profile_list.gotvals.connect(self.core.take_table_values)
         self.core.cleared.connect(self.profile_list.clear_table)
@@ -577,7 +578,7 @@ class XASplottingTab(AdlerTab):
     def merge_files_simple(self):
         if len(self.filelist) > 0:
             self.core.justload_manyfiles(self.filelist)
-            plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
+            self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
             self.active_buttons[0:9] = 1
             self.active_buttons[9:11] = 0
             self.active_buttons[11:14] = 1
@@ -585,7 +586,7 @@ class XASplottingTab(AdlerTab):
     def merge_files_offsets(self):
         if len(self.filelist) > 0:
             self.core.finalise_manyfiles()
-            plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
+            self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
             self.active_buttons[0:9] = 1
             self.active_buttons[9:11] = 0
             self.active_buttons[11:14] = 1
@@ -595,7 +596,7 @@ class XASplottingTab(AdlerTab):
             if len(self.filelist) > 1:
                 self.core.preprocess_manyfiles(self.filelist)
                 profs = [self.core.summed_rawprofile,  self.core.summed_adjusted_rawprofile]
-                plot1D(profs, fig = self.figure, text = "Pick the better profile!", 
+                self.plotter.plot1D(profs, fig = self.figure, text = "Pick the better profile!", 
                       label_override = ['Channels',  'Counts'], curve_labels = ['Simple Merge',  'Shifted Merge'])
                 self.active_buttons[0:3] = 1
                 self.active_buttons[3:14] = 0
@@ -603,7 +604,7 @@ class XASplottingTab(AdlerTab):
                 self.flip_buttons()
             elif len(self.filelist) > 0:
                 self.core.process_manyfiles(self.filelist)
-                plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
+                self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
                 self.active_buttons[0:14] = 1
                 self.active_buttons[9:11] = 0
                 self.flip_buttons()
@@ -613,10 +614,10 @@ class XASplottingTab(AdlerTab):
             self.logger('No data available to be processed.')
             return None
         elif back is None or peak is None or text is None:
-            plot1D([profi], fig = self.figure, text = "", 
+            self.plotter.plot1D([profi], fig = self.figure, text = "", 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data'])
         else:
-            plot1D([profi,  back,  peak], fig = self.figure, text = text, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text, 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'])
         self.flip_buttons()
     def process_file_button(self):
@@ -625,16 +626,16 @@ class XASplottingTab(AdlerTab):
             self.logger('No data available to be processed.')
             return None
         elif back is None or peak is None or text is None:
-            plot1D([profi], fig = self.figure, text = "", 
+            self.plotter.plot1D([profi], fig = self.figure, text = "", 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data'])
         else:
-            plot1D([profi,  back,  peak], fig = self.figure, text = text, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text, 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'])
         self.flip_buttons()
     def merge_profiles(self):
         result = self.core.manual_merge()
         if result is not None:
-            plot1D([self.core.merged_curve], fig = self.figure, text = "Manually merged profiles", curve_labels = ['Merged'] )
+            self.plotter.plot1D([self.core.merged_curve], fig = self.figure, text = "Manually merged profiles", curve_labels = ['Merged'] )
     def save_merged_curve(self):
         result, ftype = QFileDialog.getSaveFileName(self.master, 'Save the merged profile to a text file:', self.currentpath,
                'ADLER 1D output file (*.txt);;All files (*.*)')
@@ -667,7 +668,7 @@ class XASplottingTab(AdlerTab):
     @pyqtSlot()
     def showrixs(self):
         if self.core.rixs_worked:
-            plot2D_sliders(self.core.map2D[0], self.core.map2Dplotax, fig = self.figure)
+            self.plotter.plot2D_sliders(self.core.map2D[0], self.core.map2Dplotax, fig = self.figure)
         else:
             self.logger('The RIXS map has NOT been prepared.')
     def overplot(self):
@@ -682,7 +683,7 @@ class XASplottingTab(AdlerTab):
             labels = self.core.mplot_labels
             text = ""
             plotlabs = self.core.mplot_override
-            plot1D_sliders(curves, rawdata = rawcurves, 
+            self.plotter.plot1D_sliders(curves, rawdata = rawcurves, 
                   fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
     @pyqtSlot()
@@ -693,7 +694,7 @@ class XASplottingTab(AdlerTab):
             labels = self.core.mplot_labels
             text = ""
             plotlabs = self.core.mplot_override
-            plot1D_merged(curves, rawdata = rawcurves, 
+            self.plotter.plot1D_merged(curves, rawdata = rawcurves, 
                   fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
     def autofit(self):
@@ -714,6 +715,6 @@ class XASplottingTab(AdlerTab):
             peaks = self.core.mplot_fits
             fitparams = self.core.mplot_fitparams
             self.profile_list.assign_fitparams(fitparams)
-            plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
+            self.plotter.plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
         

@@ -73,11 +73,11 @@ else:
                     pass
     source.close()
 
-import matplotlib.pyplot as mpl
-# from matplotlib.backends import qt_compat
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar2QTAgg
-from matplotlib.widgets import Slider
+# import matplotlib.pyplot as mpl
+# # from matplotlib.backends import qt_compat
+# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+# from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar2QTAgg
+# from matplotlib.widgets import Slider
 
 # this is a Windows thing
 # ctypes.windll.kernel32.SetDllDirectoryW('.')

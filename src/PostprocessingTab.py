@@ -76,11 +76,11 @@ else:
                     pass
     source.close()
 
-import matplotlib.pyplot as mpl
-# from matplotlib.backends import qt_compat
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar2QTAgg
-from matplotlib.widgets import Slider
+# import matplotlib.pyplot as mpl
+# # from matplotlib.backends import qt_compat
+# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+# from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar2QTAgg
+# from matplotlib.widgets import Slider
 
 # this is a Windows thing
 # ctypes.windll.kernel32.SetDllDirectoryW('.')
@@ -465,6 +465,7 @@ class PostprocessingTab(AdlerTab):
         self.base.destroyed.connect(self.corethread.quit)
         self.core.moveToThread(self.corethread)
         self.corethread.start()
+        self.plotter = Plotter(figure = self.figure)
     @pyqtSlot()
     def cleanup(self):
         self.corethread.quit()
@@ -705,10 +706,10 @@ class PostprocessingTab(AdlerTab):
             self.logger('No data available to be processed.')
             return None
         elif back is None or peak is None or text is None:
-            plot1D([profi], fig = self.figure, text = "", 
+            self.plotter.plot1D([profi], fig = self.figure, text = "", 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data'])
         else:
-            plot1D([profi,  back,  peak], fig = self.figure, text = text, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text, 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'])
         self.flip_buttons()
     def process_file_button(self):
@@ -717,16 +718,16 @@ class PostprocessingTab(AdlerTab):
             self.logger('No data available to be processed.')
             return None
         elif back is None or peak is None or text is None:
-            plot1D([profi], fig = self.figure, text = "", 
+            self.plotter.plot1D([profi], fig = self.figure, text = "", 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data'])
         else:
-            plot1D([profi,  back,  peak], fig = self.figure, text = text, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text, 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'])
         self.flip_buttons()
     def merge_profiles(self):
         result = self.core.manual_merge()
         if result is not None:
-            plot1D([self.core.merged_curve], fig = self.figure, text = "Manually merged profiles", 
+            self.plotter.plot1D([self.core.merged_curve], fig = self.figure, text = "Manually merged profiles", 
                   label_override = self.core.merged_units, curve_labels = ['Merged'] )
     def save_merged_curve(self):
         result, ftype = QFileDialog.getSaveFileName(self.master, 'Save the merged profile to a text file:', self.currentpath,
@@ -763,7 +764,7 @@ class PostprocessingTab(AdlerTab):
         self.profile_list.update_values()
         # self.figure.set_size_inches(self.figsize1, self.figsize2)
         if self.core.rixs_worked:
-            plot2D_sliders(self.core.map2D[0], self.core.map2Dplotax, fig = self.figure, 
+            self.plotter.plot2D_sliders(self.core.map2D[0], self.core.map2Dplotax, fig = self.figure, 
             axlabels = [self.core.rixs_axis_label, 'Energy transfer [eV]'], 
             comap = 'rainbow')
         else:
@@ -782,7 +783,7 @@ class PostprocessingTab(AdlerTab):
             labels = self.core.mplot_labels
             text = ""
             plotlabs = self.core.mplot_override
-            plot1D_sliders(curves, fig = self.figure, text = text, legend_pos = self.core.legpos, 
+            self.plotter.plot1D_sliders(curves, fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
     def autofit(self):
         self.profile_list.update_values()
@@ -805,6 +806,6 @@ class PostprocessingTab(AdlerTab):
             peaks = self.core.mplot_fits
             fitparams = self.core.mplot_fitparams
             self.profile_list.assign_fitparams(fitparams)
-            plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
+            self.plotter.plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
         
