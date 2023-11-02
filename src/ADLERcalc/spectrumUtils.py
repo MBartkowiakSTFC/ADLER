@@ -27,8 +27,8 @@ import numpy as np
 
 from ADLERcalc.ioUtils import load_datheader, load_datlog, ReadAndor,\
                               WriteEnergyProfile, read_1D_curve_extended
-from ADLERcalc.imageUtils import RemoveCosmics
-from ADLERcalc.xasUtils import guess_XAS_xaxis
+from ADLERcalc.ioUtils import RemoveCosmics
+from ADLERcalc.arrayUtils import guess_XAS_xaxis
 from ADLERcalc.arrayUtils import merge2curves
 
 def load_file(fname, bpp, cray, poly = None):
@@ -172,7 +172,7 @@ def place_points_in_bins(vallog,  redfac = 1.0):
         points = (new_limits[1:] + new_limits[:-1])/2.0
         # xkey = guess_XAS_xaxis(vallog)
         full = vallog[xkey]
-        count = np.zeros(len(points)).astype(np.int)
+        count = np.zeros(len(points)).astype(int)
         for nn in range(len(points)):
             count[nn] += len(full[np.where(np.logical_and(full >= new_limits[nn], full< new_limits[nn+1]))])
         new_limits = np.concatenate([new_limits[:1], new_limits[1:][np.where(count > 0)]])

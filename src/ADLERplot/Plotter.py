@@ -35,10 +35,10 @@ class Plotter:
     def __init__(self, *args, figure = None, **kwargs):
 
         self.figure = figure
-        comap = kwargs.__getitem__('colourmap', 'OrRd')
+        comap = kwargs.get('colourmap', 'OrRd')
         self.colourmap = mpl.get_cmap(comap)
-        self.labels1d = kwargs.__getitem__('labels1d', ['Counts', 'Counts'])
-        self.labels2d = kwargs.__getitem__('labels2d', ['Pixels', 'Pixels'])
+        self.labels1d = kwargs.get('labels1d', ['Counts', 'Counts'])
+        self.labels2d = kwargs.get('labels2d', ['Pixels', 'Pixels'])
 
     def plot1D(self, pic, outFile = "", fig = None, text = '',
                     label_override = ["", ""], curve_labels= [], 

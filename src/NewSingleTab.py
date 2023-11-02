@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog,   \
 # from PyQt6 import sip
 from VariablesGUI import VarBox
 from ADLERcalc.AdlerCore import NewAdlerCore as AdlerCore
-from ADLERcalc.DataHandling import RixsMeasurement
+from ADLERcalc.RixsMeasurement import RixsMeasurement
 from ExtendGUI import AdlerTab, PeaxisDataModel, PeaxisTableView
 from ADLERplot.Plotter import Plotter
 
@@ -315,7 +315,7 @@ class SingleTab(AdlerTab):
         ['Fake Data', self.fake_data_button, 'Look for processing artifacts by working on random numbers.', 
             col3, 'QC'], # 14
         ]
-        self.active_buttons = np.zeros(len(button_list)).astype(np.int)
+        self.active_buttons = np.zeros(len(button_list)).astype(int)
         self.active_buttons[0] = 1
         self.active_buttons[2:4] = 1
         self.active_buttons[14] = 1

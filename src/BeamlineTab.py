@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QTableWidget, QFormLay
 from VariablesGUI import VarBox
 from ExtendGUI import AdlerTab
 from ADLERcalc.ioUtils import load_only_logs, load_lise_logs
-from ADLERcalc.fitUtils import fit_neon_gas, fit_n2_gas, fit_edge_profile, gauss_denum
+from ADLERcalc.xasUtils import fit_neon_gas, fit_n2_gas, fit_edge_profile, gauss_denum
 from ADLERplot.Plotter import Plotter
 
 mpl_scale = 1.0
@@ -336,7 +336,7 @@ class BeamlineTab(AdlerTab):
             # temp.values_changed.connect(self.read_inputs)
         boxes_layout.addWidget(self.progbar)
         # structure of vars: label, dictionary keys, tooltip
-        self.active_buttons = np.zeros(len(button_list)).astype(np.int)
+        self.active_buttons = np.zeros(len(button_list)).astype(int)
         self.active_buttons[0:2] = 1
         for k in button_dict.keys():
             bbase = QWidget(button_base)

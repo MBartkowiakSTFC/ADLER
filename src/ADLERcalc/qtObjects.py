@@ -28,14 +28,14 @@ import time
 
 from numba import jit, prange
 from scipy.sparse import csc_array
-from scipy.optimize import  shgo
+from scipy.optimize import  shgo, leastsq
 from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QMutex
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot,QThread, QMutex,  QSemaphore
 
-from ExtendGUI import CustomThreadpool, ThreadpoolWorker
+from ExtendGUI import ThreadpoolWorker
 from ADLERcalc.ioUtils import ReadAndor, load_datheader, load_datlog
-from ADLERcalc.imageUtils import RemoveCosmics
-from ADLERcalc.arrayUtils import shgo_profile_offsets
+from ADLERcalc.ioUtils import RemoveCosmics
+#from ADLERcalc.arrayUtils import shgo_profile_offsets
 
 @jit(nopython = True, parallel = True)
 def helper_multiplier(overlap, data):
@@ -57,6 +57,54 @@ def helper_multiplier_alt(overlap, data):
         newy[:, nl] = line[:-1]
     return newy
 
+def shgo_profile_offsets(args,  data,  to_match, tpoolin = None, pbarin = None,  maxthreads = 1):
+    """This is a wrapper for quick_match_profiles, to allow the function
+    to be called from the SHGO optimiser.
+
+    Arguments:
+        args -- offset between the profiles. To be optimised.
+        data -- profile that is being shifted
+        to_match -- reference profile
+
+    Keyword Arguments:
+        tpoolin -- an optional threadpool instance (default: {None})
+        pbarin -- an optional progress bar instance (default: {None})
+        maxthreads -- upper limit on the number of threads (default: {1})
+
+    Returns:
+        Least square sum of the profile difference, which is the fitting cost function.
+    """
+    retval = quick_match_profiles(data,  to_match, args[0],  tpoolin, pbarin,  maxthreads)
+    return (retval**2).sum()
+
+
+def scaling_fit(args, data, to_match):
+    """Applies a linear function to an array, and calculates the difference
+    between the result and a reference array.
+
+    Arguments:
+        args -- a list of floats: linear function parameters
+        data -- the array to be rescaled
+        to_match -- the reference array
+
+    Returns:
+        np.array - difference between the transformed and reference arrays
+    """
+    temp = args[0] * data + args[1]
+    return temp - to_match
+
+  
+def quick_match_profiles(data,  to_match, xshift = 0.0,  tpoolin = None, pbarin = None,  maxthreads = 1):
+    tempdat = data.copy()
+    tempdat[:, 0] -= xshift
+    temptarget = to_match.copy()
+    temptarget[:, 1] = 0.0
+    the_object = MergeCurves(tempdat,  temptarget, None,  pbar = pbarin,  mthreads = maxthreads)
+    the_object.runit()
+    rebinned = the_object.postprocess()
+    pfit = leastsq(scaling_fit, [1.0, 0.0], args = (rebinned[10:-10, 1], to_match[10:-10, 1]))
+    temp = rebinned[10:-10, 1]*pfit[0][0] + pfit[0][1]
+    return (temp - to_match[10:-10, 1])
 
 
 class Worker(QObject):

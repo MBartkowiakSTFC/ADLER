@@ -599,7 +599,7 @@ class FittingTab(AdlerTab):
         boxes_layout.addWidget(lowbar)
         # self.progbar = QProgressBar(base)
         # structure of vars: label, dictionary keys, tooltip
-        self.active_buttons = np.zeros(len(button_list)).astype(np.int)
+        self.active_buttons = np.zeros(len(button_list)).astype(int)
         self.active_buttons[0:2] = 1
         self.button_base = button_base
         self.boxes_base = boxes_base

@@ -27,7 +27,7 @@ import numpy as np
 from scipy.optimize import leastsq
 
 from ADLERcalc.qtObjects import MergeCurves
-from ADLERcalc.xasUtils import guess_XAS_xaxis
+from ADLERcalc.ioUtils import guess_XAS_xaxis
 
 try:
     rand_mt = np.random.Generator(np.random.MT19937(np.random.SeedSequence(31337)))
@@ -159,54 +159,6 @@ def merge2curves_errors(source, target):
     return results
 
 
-def shgo_profile_offsets(args,  data,  to_match, tpoolin = None, pbarin = None,  maxthreads = 1):
-    """This is a wrapper for quick_match_profiles, to allow the function
-    to be called from the SHGO optimiser.
-
-    Arguments:
-        args -- offset between the profiles. To be optimised.
-        data -- profile that is being shifted
-        to_match -- reference profile
-
-    Keyword Arguments:
-        tpoolin -- an optional threadpool instance (default: {None})
-        pbarin -- an optional progress bar instance (default: {None})
-        maxthreads -- upper limit on the number of threads (default: {1})
-
-    Returns:
-        Least square sum of the profile difference, which is the fitting cost function.
-    """
-    retval = quick_match_profiles(data,  to_match, args[0],  tpoolin, pbarin,  maxthreads)
-    return (retval**2).sum()
-
-
-def scaling_fit(args, data, to_match):
-    """Applies a linear function to an array, and calculates the difference
-    between the result and a reference array.
-
-    Arguments:
-        args -- a list of floats: linear function parameters
-        data -- the array to be rescaled
-        to_match -- the reference array
-
-    Returns:
-        np.array - difference between the transformed and reference arrays
-    """
-    temp = args[0] * data + args[1]
-    return temp - to_match
-
-  
-def quick_match_profiles(data,  to_match, xshift = 0.0,  tpoolin = None, pbarin = None,  maxthreads = 1):
-    tempdat = data.copy()
-    tempdat[:, 0] -= xshift
-    temptarget = to_match.copy()
-    temptarget[:, 1] = 0.0
-    the_object = MergeCurves(tempdat,  temptarget, None,  pbar = pbarin,  mthreads = maxthreads)
-    the_object.runit()
-    rebinned = the_object.postprocess()
-    pfit = leastsq(scaling_fit, [1.0, 0.0], args = (rebinned[10:-10, 1], to_match[10:-10, 1]))
-    temp = rebinned[10:-10, 1]*pfit[0][0] + pfit[0][1]
-    return (temp - to_match[10:-10, 1])
 
 
 def profile_offsets(args,  data,  to_match, tpoolin = None, pbarin = None,  maxthreads = 1):
@@ -238,7 +190,7 @@ def place_data_in_bins(bigarray, new_limits):
     points = (new_limits[1:] + new_limits[:-1])/2.0
     # full = vallog['E']
     spread = bigarray[:, 1].std()
-    count = np.zeros(len(points)).astype(np.int)
+    count = np.zeros(len(points)).astype(int)
     for nn in range(len(points)):
         count[nn] += len(bigarray[np.where(np.logical_and(bigarray[:, 0] >= new_limits[nn], bigarray[:, 0]< new_limits[nn+1]))])
     # new_limits = np.concatenate([new_limits[:1], new_limits[1:][np.where(count > 0)]])
@@ -278,7 +230,7 @@ def place_points_in_bins(vallog,  redfac = 1.0):
         points = (new_limits[1:] + new_limits[:-1])/2.0
         # xkey = guess_XAS_xaxis(vallog)
         full = vallog[xkey]
-        count = np.zeros(len(points)).astype(np.int)
+        count = np.zeros(len(points)).astype(int)
         for nn in range(len(points)):
             count[nn] += len(full[np.where(np.logical_and(full >= new_limits[nn], full< new_limits[nn+1]))])
         new_limits = np.concatenate([new_limits[:1], new_limits[1:][np.where(count > 0)]])

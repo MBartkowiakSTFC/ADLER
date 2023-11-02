@@ -335,7 +335,7 @@ class NewPostprocessingTab(AdlerTab):
             # temp.values_changed.connect(self.read_inputs)
         boxes_layout.addWidget(self.progbar)
         # structure of vars: label, dictionary keys, tooltip
-        self.active_buttons = np.zeros(len(button_list)).astype(np.int)
+        self.active_buttons = np.zeros(len(button_list)).astype(int)
         self.active_buttons[0:2] = 1
         for k in button_dict.keys():
             bbase = QWidget(button_base)

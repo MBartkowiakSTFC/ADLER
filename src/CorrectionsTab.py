@@ -268,7 +268,7 @@ class CorrectionsTab(AdlerTab):
         ['Histogram of counts', self.core.make_histogram, 'Plot the distribution of the pixel counts in the selected detector area.', 
             col1, 'QC'], # 13
         ]
-        self.active_buttons = np.zeros(len(button_list)).astype(np.int)
+        self.active_buttons = np.zeros(len(button_list)).astype(int)
         self.active_buttons[0] = 1
         self.active_buttons[2:4] = 1
         self.button_list = []

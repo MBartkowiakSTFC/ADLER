@@ -28,8 +28,70 @@ import sys
 from scipy.fftpack import rfft, irfft
 from astropy.io import fits as fits_module
 
-from ADLERcalc.imageUtils import RemoveCosmics
-from ADLERcalc.xasUtils import guess_XAS_xaxis
+#from ADLERcalc.imageUtils import RemoveCosmics
+#from ADLERcalc.arrayUtils import guess_XAS_xaxis
+
+def guess_XAS_xaxis(vallog):
+    relval = 1e15
+    guessed = 'Step'
+    try:
+        temp = vallog['TARGET']
+        pnum = len(temp)
+    except KeyError:
+        return guessed
+    if np.all(vallog['TARGET']==0):
+        kkvals, probfuncs = [], []
+        for kk in vallog.keys():
+            keystring = str(kk)
+            if keystring in ['TARGET', 'RING', 'OPEN', 'LOCKED', 'XBPML_HOR', 'XBPML_VER',
+                                'TEMP1', 'TEMP2', 'CURR1', 'CURR2', 'Step', 'Time', 'RelTime']:
+                continue
+            else:
+                uniqvals = np.unique(vallog[keystring])
+                uniqstep = uniqvals[1:] - uniqvals[:-1]
+                stepsize = uniqstep.mean()
+                stepvar = uniqstep.std()
+                if abs(stepvar) < 1e-6 and abs(stepsize) < 1e-6:
+                    continue
+                costfunc = np.nan_to_num( np.array([stepvar]) / np.array([abs(stepsize)]) )[0] # correct it!
+                kkvals.append(keystring)
+                probfuncs.append(costfunc)
+        probfuncs = np.array(probfuncs)
+        target = probfuncs.min()
+        for n in np.arange(len(probfuncs)):
+            if probfuncs[n] == target:
+                guessed = kkvals[n]
+    else:
+        for kk in vallog.keys():
+            keystring = str(kk)
+            if keystring in ['TARGET', 'RING', 'OPEN', 'LOCKED', 'XBPML_HOR', 'XBPML_VER',
+                                'TEMP1', 'TEMP2', 'CURR1', 'CURR2']:
+                continue
+            else:
+                comp = vallog[keystring]
+                costfun = np.abs(comp-temp).sum()
+                if costfun < relval:
+                    relval = costfun
+                    guessed = keystring
+        # if (relval/pnum) > 0.1:
+        #     print('XAS x-axis ',  guessed, 'was probably wrong. Replaced with Step.')
+        #     guessed = 'Step'
+    print('Guessed the XAS x-axis to be ', guessed)
+    return guessed
+
+def RemoveCosmics(array, NStd = 3):
+    """This function will filter out the cosmic rays from the signal.
+    At the moment it assumes that each column should have uniform counts.
+    Then it keeps only the part that is within N standard deviations away from the mean.
+    """
+    for n, line in enumerate(array):
+        lmean = line.mean()
+        lstddev = line.std()
+        badpix = np.where(np.abs(line-lmean) > (NStd*lstddev))
+        goodpix = np.where(np.abs(line-lmean) <= (NStd*lstddev))
+        newmean = line[goodpix].mean()
+        array[n][badpix] = newmean
+    return array
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -100,7 +162,7 @@ def simplify_number_range(flist):
         numbs.append(fnumber)
         prefs.append(prefix)
     prefs = np.array(prefs)
-    numbs = np.array(numbs).astype(np.int)
+    numbs = np.array(numbs).astype(int)
     unique_names = np.unique(prefs)
     textsegs = []
     for un in unique_names:
@@ -651,7 +713,7 @@ def load_and_average_logs(flist):
         ])
         limits = (extended_points[1:] + extended_points[:-1])/2.0
         full = vallog[xkey]
-        count = np.zeros(len(points)).astype(np.int)
+        count = np.zeros(len(points)).astype(int)
         for nn in range(len(points)):
             count[nn] += len(full[np.where(np.logical_and(full >= limits[nn], full< limits[nn+1]))])
         limits = np.concatenate([limits[:1], limits[1:][np.where(count > 0)]])
@@ -711,7 +773,7 @@ def load_filter_and_average_logs(flist, cutoff = None):
         ])
         limits = (extended_points[1:] + extended_points[:-1])/2.0
         full = vallog[xkey]
-        count = np.zeros(len(points)).astype(np.int)
+        count = np.zeros(len(points)).astype(int)
         for nn in range(len(points)):
             count[nn] += len(full[np.where(np.logical_and(full >= limits[nn], full< limits[nn+1]))])
         limits = np.concatenate([limits[:1], limits[1:][np.where(count > 0)]])
