@@ -245,7 +245,7 @@ class NewAdlerCore(QObject):
             source = open(fname, 'r')
         except:
             self.logger("Did not find an override file BKG_OVERRIDE.txt - using built-in background from June 2020.")
-            source = open(DATA._files['Structured_bkg_per_second.dat'], 'r')
+            source = open(DATA._files['Structured_bkg_per_second'], 'r')
         else:
             self.logger("Loading background per channel per second from BKG_OVERRIDE.txt")
         arr = []
