@@ -43,9 +43,9 @@ from PyQt6.QtCore import QDate, QTime
 
 from ADLERcalc.DataHandling import DataGroup, DataEntry
 from ADLERcalc.ioUtils import WriteProfile, ReadAndor, ReadAsc, ReadFits,\
-                              load_datheader, load_datlog
+                              load_datheader, load_datlog, RemoveCosmics
 from ADLERcalc.fitUtils import polynomial, fit_polynomial, gaussian
-from ADLERcalc.imageUtils import elastic_line, RemoveCosmics, curvature_profile, make_profile
+from ADLERcalc.imageUtils import elastic_line, curvature_profile, make_profile
 from ADLERcalc.fitUtils import gauss_denum
 from ADLERcalc.qtObjects import MergeManyCurves, MergeManyArrays
 from ADLERcalc.arrayUtils import rand_mt

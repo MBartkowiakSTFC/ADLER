@@ -36,6 +36,7 @@ from ADLERcalc.ioUtils import read_1D_xas, load_only_logs, resource_path, load_a
                               WriteEnergyProfile
 from ADLERcalc.spectrumUtils import place_points_in_bins
 from ADLERcalc.arrayUtils import merge2curves_errors, place_data_in_bins
+from ADLERdata.AdlerData import DATA
 
 class XasCore(QObject):
     cleared = pyqtSignal()
@@ -103,8 +104,8 @@ class XasCore(QObject):
         self.legpos = 0
         self.retvals = []
         xas = XasCorrector()
-        xas.readCurves(resource_path('FluxCorrectionHarm1.txt'), harmnum=1)
-        xas.readCurves(resource_path('FluxCorrectionHarm3.txt'), harmnum=3)
+        xas.readCurves(DATA._files['FluxCorrectionHarm1'], harmnum=1)
+        xas.readCurves(DATA._files['FluxCorrectionHarm3'], harmnum=3)
         self.xas_corrector = xas
     def assign_boxes(self, boxes):
         self.boxes = boxes

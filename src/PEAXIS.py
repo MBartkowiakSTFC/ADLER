@@ -20,9 +20,9 @@ import math
 import numpy as np
 import scipy.interpolate as scint
 import scipy.optimize as scopt
-from geom_tools import *
-from units import p_lambda,  p_energy,  p_lambda_meters, p_k
-from sample import Sample
+# from geom_tools import *
+# from units import p_lambda,  p_energy,  p_lambda_meters, p_k
+# from sample import Sample
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QMutex, QTimer
 from numba import jit
 
@@ -785,10 +785,10 @@ class ComputeKernel(QObject):
         Emax = Ei.max()
         Estep = (Emax-Emin)/len(Ei)
         Eax = np.arange(Emin - Estep*0.5, Emax + Estep*0.501, Estep)
-        remapped_result = np.zeros(result.shape*scalefac.astype(np.int))
-        remapped_norm = np.zeros(result.shape*scalefac.astype(np.int)).astype(np.int)
-        gap_filler = np.zeros(result.shape*scalefac.astype(np.int)).astype(np.int)
-        replaced_vals = np.zeros(result.shape*scalefac.astype(np.int))
+        remapped_result = np.zeros(result.shape*scalefac.astype(int))
+        remapped_norm = np.zeros(result.shape*scalefac.astype(int)).astype(int)
+        gap_filler = np.zeros(result.shape*scalefac.astype(int)).astype(int)
+        replaced_vals = np.zeros(result.shape*scalefac.astype(int))
         for nn in range(len(Ei)):
             for mm in range(len(scatt_angle)):
                 qval = result[nn][mm]

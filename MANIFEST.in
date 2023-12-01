@@ -1,0 +1,2 @@
+include src/ADLERdata/*.txt
+include src/ADLERdata/*.dat

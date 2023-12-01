@@ -37,7 +37,7 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtWidgets import QApplication
 
 
-from DataHandling import RixsMeasurement
+from ADLERcalc.RixsMeasurement import RixsMeasurement
 from ADLERcalc.ioUtils import read_1D_curve_extended,\
                               WriteEnergyProfile
 from ADLERcalc.imageUtils import elastic_line_anyx

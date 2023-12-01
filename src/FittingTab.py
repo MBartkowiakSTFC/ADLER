@@ -21,11 +21,13 @@ The ADLER tab for fitting arbitrary curves.
 It is still considered work in progress.
 """
 
+import os
+import time
+from os.path import expanduser
+
+import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot,  QSize,  QThread
 from PyQt6.QtCore import Qt
-# from PyQt6.QtCore import Qt.ItemIsEnabled as ItemIsEnabled
-# from PyQt6.QtCore import Qt.Checked as Qt.Checked
-# from PyQt6.QtCore import Qt.UnQt.Checked as UnChecked
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog, QTableWidget, QFormLayout,   \
                                                 QPushButton,  QVBoxLayout, QHBoxLayout, QTableWidgetItem, \
@@ -33,14 +35,9 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog, QTableWid
                                                 QDialog, QTextEdit, QScrollArea
 # from PyQt6 import sip
 from VariablesGUI import VarBox
-from ADLERcalc import FitCore
+from ADLERcalc.FitCore import FitCore
 from ExtendGUI import AdlerTab
-
-import numpy as np
-import os
-import time
-import copy
-from os.path import expanduser
+from ADLERplot.Plotter import Plotter
 
 mpl_scale = 1.0
 mpl_figure_scale = 1.0
@@ -74,401 +71,14 @@ else:
     source.close()
 
 import matplotlib.pyplot as mpl
-# from matplotlib.backends import qt_compat
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar2QTAgg
 from matplotlib.widgets import Slider
 
-# this is a Windows thing
-# ctypes.windll.kernel32.SetDllDirectoryW('.')
-
-# simple mathematical functions are defined here
 
 GlobFont = QFont('Sans Serif', int(12*font_scale))
 
 oldval = 0.0
-
-#### plotting part
-
-def gridtype(nplots):
-    if nplots ==1:
-        return (111, )
-    elif nplots ==2:
-        return (211, 212)
-    elif nplots ==3:
-        return (311,  312,  313)
-    elif nplots ==4:
-        return (221,  222,  223,  224)
-    elif nplots ==5:
-        return (321,  322,  323,  324,  325)
-    elif nplots ==6:
-        return (321,  322,  323,  324,  325,  326)
-    elif nplots ==7:
-        return (421,  422,  423,  424,  425,  426,  427)
-    elif nplots ==8:
-        return (421,  422,  423,  424,  425,  426,  427,  428)
-    elif nplots > 8:
-        return (331, 332, 333, 334, 335, 336, 337, 338, 339)
-    else:
-        return []
-        
-def plot1D_grid(pic, outFile = "", fig = None, text = '', label_override = ["", ""],
-                    legend_pos = 0):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    grids = gridtype(len(pic))
-    for ncur, grid in enumerate(grids):
-        axes = fig.add_subplot(grid)
-        axes.grid(True)
-        xlab, ylab = label_override[ncur]
-        axes.set_xlabel(xlab)
-        axes.set_ylabel(ylab)
-        axes.plot(pic[ncur][:, 0],  pic[ncur][:, 1])
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-
-def plot1D(pic, outFile = "", fig = None, text = '', label_override = ["", ""], curve_labels= [], 
-                  legend_pos = 0):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (vertical)', labels[0]]
-    # topval = np.nan_to_num(pic).max()
-    # if topval == 0.0:
-    #     topval = 1.0
-    # xxx = axes.plot(pic[:,0], pic[:,1], '-')
-    for xp, p in enumerate(pic):
-        if len(p[0]) > 2:
-            axes.errorbar(p[:,0], p[:,1], yerr = p[:,2], fmt='-s')
-        else:
-            if len(curve_labels) == len(pic):
-                axes.plot(p[:,0], p[:,1], '-', label = curve_labels[xp])
-            else:
-                axes.plot(p[:,0], p[:,1], '-')
-    axes.grid(True)
-    if label_override[0]:
-        axes.set_xlabel(label_override[0])
-    else:
-        axes.set_xlabel(axlabels[0])
-    if label_override[1]:
-        axes.set_ylabel(label_override[1])
-    else:
-        axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    tpos_x = axes.get_xlim()[0]
-    ty1, ty2 = axes.get_ylim()
-    if len(p[0]) > 2:
-        temp_ylim = np.array([ty1, ty2])
-        if ty1 < 0:
-            temp_ylim[0] = 0
-        if ty2 > 2048:
-            temp_ylim[1] = 2048
-        axes.set_ylim(temp_ylim)
-    tpos_y = ty2 + 0.05 * (ty2-ty1)
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    # fig.add_axes(axtextf)
-    if len(curve_labels) == len(pic):
-        axes.legend(loc=legend_pos)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-
-def plot1D_sliders(pic, outFile = "", fig = None, text = '', label_override = ["", ""],
-                            curve_labels= [],  max_offset= 0.2,  legend_pos = 0, 
-                            rawdata = []):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (vertical)', labels[0]]
-    # for n, l in enumerate(curve_labels):
-    #     temp = l.split('eV')
-    #     try:
-    #         tempval = float(temp[0])
-    #     except:
-    #         curve_labels[n] = '-1.0 eV' + temp[1]
-    refs = []
-    refs2 = []
-    refs3 = []
-    refs4 = []
-    refs5 = []
-    maxval = 0.0
-    minval = 1e9
-    lenref3 = 0
-    # topval = np.nan_to_num(pic).max()
-    # if topval == 0.0:
-    #     topval = 1.0
-    # xxx = axes.plot(pic[:,0], pic[:,1], '-')
-    for rn in range(len(pic)):
-        p = pic[rn]
-        l = curve_labels[rn]
-        [ref] = axes.plot(p[:,0], p[:,1], '-', label = l)
-        tempcolour = ref._color
-        [ref2,  dummy1,  dummy2] = axes.errorbar(p[:,0], p[:,1], yerr = p[:,2],  color=tempcolour)
-        # dupua = axes.errorbar(p[:,0], p[:,1], yerr = p[:,2])
-        if rn <= len(rawdata)-1:
-            pr = rawdata[rn]
-            [ref3] = axes.plot(pr[:,0], pr[:,1], '.', color=tempcolour)
-            refs3.append(ref3)
-            lenref3 += 1
-        else:
-            pr = None
-        refs.append(ref)
-        refs2.append(ref2)
-        refs4.append(dummy1)
-        refs5.append(dummy2)
-        maxval = max(maxval, np.abs(p[:,1]).max())
-        minval = min(minval, p[:,1].min())
-        if pr is not None:
-            maxval = max(maxval, np.abs(pr[:,1]).max())
-            minval = min(minval, pr[:,1].min())
-    span = maxval-minval
-    axes.grid(True)
-    if label_override[0]:
-        axes.set_xlabel(label_override[0])
-    else:
-        axes.set_xlabel(axlabels[0])
-    if label_override[1]:
-        axes.set_ylabel(label_override[1])
-    else:
-        axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    axes.set_ylim([minval - 0.1*abs(minval), maxval + 0.1*abs(maxval)])
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if len(curve_labels) == len(pic):
-        axes.legend(loc=legend_pos)
-    # here we add sliders
-    offset_slider_ax  = fig.add_axes([0.25, 0.15, 0.55, 0.03])#, axisbg=axis_color)
-    offset_slider = Slider(offset_slider_ax, 'Offset', 0.0, max_offset, valinit=0.0)
-    def sliders_on_changed(val):
-        global oldval
-        newval = offset_slider.val * span
-        for n, r in enumerate(range(len(pic))):
-            ydata = pic[r][:,1] + n*newval
-            raw_ydata = rawdata[r][:,1] + n*newval
-            refs[n].set_ydata(ydata)
-            refs2[n].set_ydata(ydata)
-            if n < lenref3:
-                refs3[n].set_ydata(raw_ydata)
-            refs5[n][0].set_segments([np.array([[x, yt], [x, yb]])
-                                for x, yt, yb in zip(pic[r][:, 0], ydata + pic[r][:, 2], ydata - pic[r][:, 2])])
-        ty1, ty2 = axes.get_ylim()
-        axes.set_ylim([ty1, ty2 + n*(newval-oldval)])
-        fig.canvas.draw_idle()
-        oldval = copy.deepcopy(newval)
-    offset_slider.on_changed(sliders_on_changed)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-
-def plot1D_merged(pic, outFile = "", fig = None, text = '', label_override = ["", ""],
-                            curve_labels= [],  max_offset= 0.2,  legend_pos = 0, 
-                            rawdata = []):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    symbolcount = 0
-    handles = []
-    ptlabels = []
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (vertical)', labels[0]]
-    # for n, l in enumerate(curve_labels):
-    #     temp = l.split('eV')
-    #     try:
-    #         tempval = float(temp[0])
-    #     except:
-    #         curve_labels[n] = '-1.0 eV' + temp[1]
-    maxval = 0.0
-    minval = 1e9
-    # topval = np.nan_to_num(pic).max()
-    # if topval == 0.0:
-    #     topval = 1.0
-    # xxx = axes.plot(pic[:,0], pic[:,1], '-')
-    for rn in range(len(pic)):
-        p = pic[rn]
-        l = curve_labels[rn]
-        [ref] = axes.plot(p[:,0], p[:,1], 'k-', label = 'Merged data')
-        tempcolour = ref._color
-        [ref2,  dummy1,  dummy2] = axes.errorbar(p[:,0], p[:,1], yerr = p[:,2],  color=tempcolour)
-        maxval = max(maxval, np.abs(p[:,1]).max())
-        minval = min(minval, p[:,1].min())
-        # dupua = axes.errorbar(p[:,0], p[:,1], yerr = p[:,2])
-    for rn in range(len(rawdata)):
-        if len(rawdata) > 0:
-            pr = rawdata[rn]
-            [ref3] = axes.plot(pr[:,0], pr[:,1], '.', label = curve_labels[rn+1])
-        maxval = max(maxval, np.abs(pr[:,1]).max())
-        minval = min(minval, pr[:,1].min())
-    axes.grid(True)
-    if label_override[0]:
-        axes.set_xlabel(label_override[0])
-    else:
-        axes.set_xlabel(axlabels[0])
-    if label_override[1]:
-        axes.set_ylabel(label_override[1])
-    else:
-        axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    axes.set_ylim([minval - 0.1*abs(minval), maxval + 0.1*abs(maxval)])
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if len(curve_labels) == len(pic):
-        axes.legend(loc=legend_pos)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
-        
-def plot1D_withfits(pic, fit, outFile = "", fig = None, text = '', label_override = ["", ""],
-                            curve_labels= [],  max_offset= 0.2,  legend_pos = 0):
-    if fig == None:
-        fig = mpl.figure(figsize = [12.0, 8.0], dpi=75, frameon = False)
-        trigger = True
-    else:
-        fig.clear()
-        trigger = False
-    labels = ['Counts','Counts']
-    axes = fig.add_subplot(111)
-    mainpos = axes.get_position()
-    mainpos.y0 = 0.25       # for example 0.2, choose your value
-    # mainpos.ymax = 1.0
-    mainpos.y1 = 0.99
-    axes.set_position(mainpos)
-    axlabels = ['Pixels (vertical)', labels[0]]
-    refs = []
-    # peakrefs = []
-    maxval = 0.0
-    minval = 1e9
-    # topval = np.nan_to_num(pic).max()
-    # if topval == 0.0:
-    #     topval = 1.0
-    # xxx = axes.plot(pic[:,0], pic[:,1], '-')
-    for rn in range(len(pic)):
-        p = pic[rn]
-        # f = fit[rn]
-        l = curve_labels[rn]
-        [ref] = axes.plot(p[:,0], p[:,1], '-', label = l)
-        # [peakref] = axes.plot(f[:,0], f[:,1], '--k')
-        refs.append(ref)
-        # peakrefs.append(peakref)
-        maxval = max(maxval, (p[:,1]).max())
-        minval = min(minval, (p[:,1]).min())
-    span = maxval-minval
-    axes.grid(True)
-    if label_override[0]:
-        axes.set_xlabel(label_override[0])
-    else:
-        axes.set_xlabel(axlabels[0])
-    if label_override[1]:
-        axes.set_ylabel(label_override[1])
-    else:
-        axes.set_ylabel(axlabels[1])
-    box = axes.get_position()
-    axes.set_position([box.x0, box.y0 + box.height * 0.2,
-             box.width, box.height * 0.8])
-    axes.set_ylim([minval - 0.1*abs(minval), maxval + 0.1*abs(maxval)])
-    axtextf = fig.add_axes([0.40, 0.01, 0.20, 0.01], frameon = False) # , axisbg = '0.9')
-    axtextf.set_yticks([])
-    axtextf.set_xticks([])
-    axtextf.set_title(text)
-    if len(curve_labels) == len(pic):
-        axes.legend(loc=legend_pos)
-    # here we add sliders
-    offset_slider_ax  = fig.add_axes([0.25, 0.15, 0.55, 0.03])#, axisbg=axis_color)
-    offset_slider = Slider(offset_slider_ax, 'Offset', 0.0, max_offset, valinit=0.0)
-    def sliders_on_changed(val):
-        global oldval
-        newval = offset_slider.val * span
-        for n, r in enumerate(range(len(pic))):
-            ydata = pic[r][:,1] + n*newval
-            refs[n].set_ydata(ydata)
-            # ydata2 = fit[r][:,1] + n*newval
-            # peakrefs[n].set_ydata(ydata2)
-        ty1, ty2 = axes.get_ylim()
-        axes.set_ylim([ty1, ty2 + n*(newval-oldval)])
-        fig.canvas.draw_idle()
-        oldval = copy.deepcopy(newval)
-    offset_slider.on_changed(sliders_on_changed)
-    if not outFile:
-        if trigger:
-            mpl.show()
-        else:
-            fig.canvas.draw()
-    else:
-        mpl.savefig(outFile, bbox_inches = 'tight')
-        mpl.close()
 
 #### GUI part
 
@@ -700,6 +310,7 @@ class CurveDialog(QDialog):
         c, f, l = self.MakeCanvas(self)
         self.layout.addWidget(c)
         self.fig = f
+        self.plotter = Plotter(figure = self.fig)
         self.layout.addWidget(rightpanel)
         # self.layout.addWidget(self.button)
         self.setLayout(self.layout)
@@ -808,7 +419,7 @@ class CurveDialog(QDialog):
             else:
                 pic = [np.column_stack([xarr, yarr, earr])]
             self.thecurve = pic[0]
-            plot1D(pic,  fig=self.fig)
+            self.plotter.plot1D(pic,  fig=self.fig)
     def send_values_back(self):
         pdict = {}
         pdict['separator'] =  self.sepp
@@ -830,6 +441,7 @@ class FittingTab(AdlerTab):
         # self.progbar = None
         self.log = log
         self.canvas, self.figure, self.clayout = canvas
+        self.plotter = Plotter(figure = self.figure)
         self.params = [(loading_variables, "File Loading"),
                                (plotting_variables,  "Plotting"),
                                (fit_variables,  "Fitting")]
@@ -987,7 +599,7 @@ class FittingTab(AdlerTab):
         boxes_layout.addWidget(lowbar)
         # self.progbar = QProgressBar(base)
         # structure of vars: label, dictionary keys, tooltip
-        self.active_buttons = np.zeros(len(button_list)).astype(np.int)
+        self.active_buttons = np.zeros(len(button_list)).astype(int)
         self.active_buttons[0:2] = 1
         self.button_base = button_base
         self.boxes_base = boxes_base
@@ -1059,7 +671,7 @@ class FittingTab(AdlerTab):
         self.unfreeze_outputs()
         self.fname_edit.setText(fullname)
         self.freeze_outputs()
-        plot1D([profile], fig = self.figure, text = "Choose the fitting parameters.", 
+        self.plotter.plot1D([profile], fig = self.figure, text = "Choose the fitting parameters.", 
                       label_override = ['X axis',  'Y axis'], curve_labels = [shortname])
         self.flip_buttons()
     def clear_profile_button(self):
@@ -1079,7 +691,7 @@ class FittingTab(AdlerTab):
             if len(self.filelist) > 1:
                 self.core.preprocess_manyfiles(self.filelist)
                 profs = [self.core.summed_rawprofile,  self.core.summed_adjusted_rawprofile]
-                plot1D(profs, fig = self.figure, text = "Pick the better profile!", 
+                self.plotter.plot1D(profs, fig = self.figure, text = "Pick the better profile!", 
                       label_override = ['Channels',  'Counts'], curve_labels = ['Simple Merge',  'Shifted Merge'])
                 self.active_buttons[0:3] = 1
                 self.active_buttons[3:13] = 0
@@ -1087,7 +699,7 @@ class FittingTab(AdlerTab):
                 self.flip_buttons()
             elif len(self.filelist) > 0:
                 self.core.process_manyfiles(self.filelist)
-                plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
+                self.plotter.plot2D_sliders(self.core.data2D, self.core.plotax, fig = self.figure)
                 self.active_buttons[0:13] = 1
                 self.active_buttons[9:11] = 0
                 self.flip_buttons()
@@ -1097,10 +709,10 @@ class FittingTab(AdlerTab):
             self.logger('No data available to be processed.')
             return None
         elif back is None or peak is None or text is None:
-            plot1D([profi], fig = self.figure, text = "", 
+            self.plotter.plot1D([profi], fig = self.figure, text = "", 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data'])
         else:
-            plot1D([profi,  back,  peak], fig = self.figure, text = text, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text, 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'])
         self.flip_buttons()
     def process_file_button(self):
@@ -1109,16 +721,16 @@ class FittingTab(AdlerTab):
             self.logger('No data available to be processed.')
             return None
         elif back is None or peak is None or text is None:
-            plot1D([profi], fig = self.figure, text = "", 
+            self.plotter.plot1D([profi], fig = self.figure, text = "", 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data'])
         else:
-            plot1D([profi,  back,  peak], fig = self.figure, text = text, 
+            self.plotter.plot1D([profi,  back,  peak], fig = self.figure, text = text, 
                   label_override = ['Channels',  'Counts'], curve_labels = ['Data',  'Background', 'Fit'])
         self.flip_buttons()
     def merge_profiles(self):
         result = self.core.manual_merge()
         if result is not None:
-            plot1D([self.core.merged_curve], fig = self.figure, text = "Manually merged profiles", curve_labels = ['Merged'] )
+            self.plotter.plot1D([self.core.merged_curve], fig = self.figure, text = "Manually merged profiles", curve_labels = ['Merged'] )
     def save_merged_curve(self):
         result, ftype = QFileDialog.getSaveFileName(self.master, 'Save the merged profile to a text file:', self.currentpath,
                'ADLER 1D output file (*.txt);;All files (*.*)')
@@ -1151,7 +763,7 @@ class FittingTab(AdlerTab):
     @pyqtSlot()
     def showrixs(self):
         if self.core.rixs_worked:
-            plot2D_sliders(self.core.map2D[0], self.core.map2Dplotax, fig = self.figure)
+            self.plotter.plot2D_sliders(self.core.map2D[0], self.core.map2Dplotax, fig = self.figure)
         else:
             self.logger('The RIXS map has NOT been prepared.')
     def overplot(self):
@@ -1166,7 +778,7 @@ class FittingTab(AdlerTab):
             labels = self.core.mplot_labels
             text = ""
             plotlabs = self.core.mplot_override
-            plot1D_sliders(curves, rawdata = rawcurves, 
+            self.plotter.plot1D_sliders(curves, rawdata = rawcurves, 
                   fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
     @pyqtSlot()
@@ -1177,7 +789,7 @@ class FittingTab(AdlerTab):
             labels = self.core.mplot_labels
             text = ""
             plotlabs = self.core.mplot_override
-            plot1D_merged(curves, rawdata = rawcurves, 
+            self.plotter.plot1D_merged(curves, rawdata = rawcurves, 
                   fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
     def autofit(self):
@@ -1207,7 +819,7 @@ class FittingTab(AdlerTab):
                     self.profile_list.add_row(pars[pn : 4*num : num])
                 self.polyfit_edit.setText(", ".join([str(x) for x in pars[4*num:]]))
                 self.freeze_outputs()
-                plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
+                self.plotter.plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
     @pyqtSlot()
     def showfits(self):
@@ -1219,7 +831,7 @@ class FittingTab(AdlerTab):
             peaks = self.core.mplot_fits
             fitparams = self.core.mplot_fitparams
             self.profile_list.assign_fitparams(fitparams)
-            plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
+            self.plotter.plot1D_withfits(curves, peaks,  fig = self.figure, text = text, legend_pos = self.core.legpos, 
                   label_override = plotlabs, curve_labels = labels, max_offset = self.core.offmax)
     @pyqtSlot()
     def summary(self):
@@ -1237,7 +849,7 @@ class FittingTab(AdlerTab):
             vals = np.array(vals)
             for nn in range(vals.shape[1]):
                 pics.append(np.column_stack([xs, vals[:, nn]]))
-            plot1D_grid(pics, outFile = "", fig = self.figure, text = '', 
+            self.plotter.plot1D_grid(pics, outFile = "", fig = self.figure, text = '', 
             label_override = [["Peak number", "Cost function"], ["Peak number", "R$^{2}$"], ["Peak number", "$\chi^{2}$"]], 
                     legend_pos = 0)
         

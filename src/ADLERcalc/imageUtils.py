@@ -321,19 +321,6 @@ def SphericalCorrection(inarray, params = [1.0,1.0,1.0], locut = 0, hicut = 2048
         result[:,n] = discrete_rebin(inarray[:,n], offset = offsets[n], padding = 6, nsubdiv=100)
     return result
 
-def RemoveCosmics(array, NStd = 3):
-    """This function will filter out the cosmic rays from the signal.
-    At the moment it assumes that each column should have uniform counts.
-    Then it keeps only the part that is within N standard deviations away from the mean.
-    """
-    for n, line in enumerate(array):
-        lmean = line.mean()
-        lstddev = line.std()
-        badpix = np.where(np.abs(line-lmean) > (NStd*lstddev))
-        goodpix = np.where(np.abs(line-lmean) <= (NStd*lstddev))
-        newmean = line[goodpix].mean()
-        array[n][badpix] = newmean
-    return array
 
 def apply_offset_to_2D_data(inarray, locut, hicut, offset):
     """This is a dummy function for now.

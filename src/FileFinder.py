@@ -20,15 +20,13 @@ __doc__ = """Here we attempt to consolidate the information about out measuremen
 that is typically coming from different sources.
 """
 
-import numpy as np
 import os
-import time
-import sys
-import copy
+
 from PyQt6.QtCore import QAbstractTableModel,  QObject, QVariant, Qt
 from PyQt6.QtCore import pyqtSlot, pyqtSignal
 from PyQt6.QtGui import QStandardItemModel,  QStandardItem
-from ADLERcalc import header_read
+
+from ADLERcalc.ioUtils import header_read
 from ExperimentTree import SingleFile
 
 LOG_PATH = os.path.join("D:", "Measurements")

@@ -31,17 +31,16 @@ from scipy.interpolate import interp1d
 from scipy.fftpack import rfft, irfft, fftfreq
 from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
 
-from ExtendGUI import CustomThreadpool
-from DataHandling import RixsMeasurement
+from ADLERcalc.RixsMeasurement import RixsMeasurement
 from ADLERcalc.ioUtils import WriteProfile, simplify_number_range, resource_path, simple_read
 from ADLERcalc.fitUtils import polynomial, fit_polynomial, gauss_denum
 from ADLERcalc.imageUtils import elastic_line, curvature_profile, make_profile,\
                                  apply_offset_to_2D_data, SphericalCorrection,\
                                  make_histogram, make_stripe
-from ADLERcalc.spectrumUtils import Shif
-from ADLERcalc.qtObjects import MergeCurves, ShiftProfilesParallel, Worker
+#from ADLERcalc.spectrumUtils import Shift
+from ADLERcalc.qtObjects import MergeCurves, ShiftProfilesParallel, Worker, CustomThreadpool
 from ADLERcalc.arrayUtils import rand_mt, profile_offsets
-
+from ADLERdata.AdlerData import DATA
 
 class NewAdlerCore(QObject):
     fittingresult = pyqtSignal(object)
@@ -246,7 +245,7 @@ class NewAdlerCore(QObject):
             source = open(fname, 'r')
         except:
             self.logger("Did not find an override file BKG_OVERRIDE.txt - using built-in background from June 2020.")
-            source = open(resource_path('Structured_bkg_per_second.dat'), 'r')
+            source = open(DATA._files['Structured_bkg_per_second'], 'r')
         else:
             self.logger("Loading background per channel per second from BKG_OVERRIDE.txt")
         arr = []

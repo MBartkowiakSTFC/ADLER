@@ -24,56 +24,9 @@ the mathematical treatment of the XAS spectra.
 
 
 import numpy as np
-from ADLERcalc.fitUtils import leastsq, interp1d, my_voigt
-
-
-def guess_XAS_xaxis(vallog):
-    relval = 1e15
-    guessed = 'Step'
-    try:
-        temp = vallog['TARGET']
-        pnum = len(temp)
-    except KeyError:
-        return guessed
-    if np.all(vallog['TARGET']==0):
-        kkvals, probfuncs = [], []
-        for kk in vallog.keys():
-            keystring = str(kk)
-            if keystring in ['TARGET', 'RING', 'OPEN', 'LOCKED', 'XBPML_HOR', 'XBPML_VER',
-                                'TEMP1', 'TEMP2', 'CURR1', 'CURR2', 'Step', 'Time', 'RelTime']:
-                continue
-            else:
-                uniqvals = np.unique(vallog[keystring])
-                uniqstep = uniqvals[1:] - uniqvals[:-1]
-                stepsize = uniqstep.mean()
-                stepvar = uniqstep.std()
-                if abs(stepvar) < 1e-6 and abs(stepsize) < 1e-6:
-                    continue
-                costfunc = np.nan_to_num( np.array([stepvar]) / np.array([abs(stepsize)]) )[0] # correct it!
-                kkvals.append(keystring)
-                probfuncs.append(costfunc)
-        probfuncs = np.array(probfuncs)
-        target = probfuncs.min()
-        for n in np.arange(len(probfuncs)):
-            if probfuncs[n] == target:
-                guessed = kkvals[n]
-    else:
-        for kk in vallog.keys():
-            keystring = str(kk)
-            if keystring in ['TARGET', 'RING', 'OPEN', 'LOCKED', 'XBPML_HOR', 'XBPML_VER',
-                                'TEMP1', 'TEMP2', 'CURR1', 'CURR2']:
-                continue
-            else:
-                comp = vallog[keystring]
-                costfun = np.abs(comp-temp).sum()
-                if costfun < relval:
-                    relval = costfun
-                    guessed = keystring
-        # if (relval/pnum) > 0.1:
-        #     print('XAS x-axis ',  guessed, 'was probably wrong. Replaced with Step.')
-        #     guessed = 'Step'
-    print('Guessed the XAS x-axis to be ', guessed)
-    return guessed
+from scipy.optimize import leastsq
+from scipy.interpolate import interp1d
+from ADLERcalc.fitUtils import my_voigt, gauss_denum
 
 def single_n2_profile(params, xarr, fixed_lorentz = 0.12, yarr = None, extraweight = False):
     num_peaks = int((len(params) - 3)/2)
