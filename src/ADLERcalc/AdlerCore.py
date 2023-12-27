@@ -79,7 +79,8 @@ class NewAdlerCore(QObject):
         # self.threadpool = QThreadPool.globalInstance()
         self.threadpool = CustomThreadpool(MAX_THREADS = max_threads)
         # self.threadpool.setMaxThreadCount(max_threads)
-        self.the_object = RixsMeasurement(max_threads = max_threads)
+        self.the_object = RixsMeasurement(max_threads = max_threads,
+                                          tdb_profile=self.tdb_profile)
         self.data,  self.header,  self.logvals,  self.logvalnames = None,  None,  None,  None
         self.processing_history = []
         self.data2D = None
@@ -258,7 +259,8 @@ class NewAdlerCore(QObject):
             self.temp_path = os.path.split(flist[0])[0]
             self.name_as_segments = simplify_number_range(flist)
             self.temp_name = "_".join(['Processed']+self.name_as_segments)
-            self.the_object = RixsMeasurement(max_threads = self.maxthreads)
+            self.the_object = RixsMeasurement(max_threads = self.maxthreads,
+                                              tdb_profile=self.tdb_profile)
             self.the_object.loadFiles(flist)
             self.pass_calibration()
             self.the_object.postprocess()
@@ -401,7 +403,7 @@ class NewAdlerCore(QObject):
         self.save_last_params()
     @pyqtSlot()
     def generate_mock_dataset(self):
-        self.the_object = RixsMeasurement()
+        self.the_object = RixsMeasurement(tdb_profile=self.tdb_profile)
         self.the_object.fakeData(self.cuts, self.bpp)
         self.offsets = [0.0]
         self.the_object.postprocess()
