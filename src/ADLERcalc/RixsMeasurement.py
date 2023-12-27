@@ -51,7 +51,7 @@ from ADLERcalc.qtObjects import MergeManyCurves, MergeManyArrays
 from ADLERcalc.arrayUtils import rand_mt
 
 class RixsMeasurement():
-    def __init__(self, filenames = [], max_threads = 1):
+    def __init__(self, filenames = [], max_threads = 1, tdb_profile = None):
         self.date_formatstring = "dd-MM-yyyy"
         self.time_formatstring = "hh:mm:ss"
         self.sourcename = ""
@@ -65,7 +65,7 @@ class RixsMeasurement():
         self.header_files = [] # .DAT files loaded
         self.log_files = [] # .XAS files loaded
         self.start_points = [] # this will be a (QDate, QTime) tuple
-        self.tdb_profile = None
+        self.tdb_profile = tdb_profile
         self.calibration = []
         self.calibration_source = []
         self.calibration_dates = []
@@ -810,6 +810,7 @@ class RixsMeasurement():
                 else:
                     temp2 = temp*self.times[n]
                     temp2.reshape((1, det_width))
+                    temp2 *= np.ones((det_length, 1))
                     self.data[n] -= temp2
             else:
                 continue
