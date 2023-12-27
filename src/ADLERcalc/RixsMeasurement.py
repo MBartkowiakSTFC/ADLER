@@ -810,6 +810,7 @@ class RixsMeasurement():
                 else:
                     temp2 = temp*self.times[n]
                     temp2.reshape((1, det_width))
+                    temp2 *= np.ones((det_length, 1))
                     self.data[n] -= temp2
             else:
                 continue
