@@ -1,0 +1,11 @@
+Total background changes with time as:
+time(s) * 1036.40952
+
+So, the bpp contribution from meas. time is
+1036.40952 / (2048*2048) per second
+
+Based on this, the bpp contribution from readout noise is
+960.78154
+
+Now the question is if the structured background is time-dependent or not...
+
