@@ -79,6 +79,7 @@ class NewAdlerCore(QObject):
         # self.threadpool = QThreadPool.globalInstance()
         self.threadpool = CustomThreadpool(MAX_THREADS = max_threads)
         # self.threadpool.setMaxThreadCount(max_threads)
+        self.tdb_profile = None
         self.the_object = RixsMeasurement(max_threads = max_threads,
                                           tdb_profile=self.tdb_profile)
         self.data,  self.header,  self.logvals,  self.logvalnames = None,  None,  None,  None
@@ -95,7 +96,6 @@ class NewAdlerCore(QObject):
         self.name_as_segments = []
         self.fft_plots =[]
         self.energies = []
-        self.tdb_profile = None
         self.energy_profile = None
         self.fitted_peak_energy = None
         self.fitting_params_energy = None
