@@ -1,0 +1,117 @@
+
+#-------------------------------------------
+# Meas-ID            $ VI3grazing-65K_R0010 $ 
+# Date               $ 2022-10-15 $ 
+# Time at start      $ 21:51:54 $ 
+# Time at end        $ 22:22:00 $ 
+# CHaOS Version      $ 4.1 from Aug 26 2022 $ 
+# Script             $ rixsV3.txt $ 
+# ScriptLine         $ 19 $ 
+# Temperature        $   67.17 $ K
+# Method             $ RIXS $ 
+# Measuring mode     $ Single scan $ 
+# Label              $  $ 
+# Measuring time     $ 1800.00 $ s
+# Exposure time      $ 1800.00 $ s
+# Format             $ 2D_TBL $ 
+# x-range
+# Detector # vertical speed      $    1,    76.9 $ us
+# Detector # horizontal speed    $    2,     1.0 $ Mhz
+# Detector # pre amplifier gain  $    0,     1.0 $ 
+# Detector # vert. clock amplit. $    0,     0 $ 
+# Detector # Acquisition mode    $    1  single scan  (SINGLE) $ 
+# Detector # Readout mode        $    4  Image  $ 
+# Detector # Trigger mode        $    0  Internal $ 
+# Detector # Cosmic ray  mode    $ OFF $ 
+# Detector # high capacity       $ OFF $    (OFF=high sensitiv.) 
+# Detector # single photon count $ OFF $ 
+# Sample # ID       $  $ 
+# Sample # Name       $  $ 
+# Sample # Composition $ UNDEFINED $ 
+# Sample # Comments $ UNDEFINED $ 
+# Sample # Form     $ NOT SET $ 
+# Sample # Thickness $    0.50 $ mm
+# Sample # Space group $  $ 
+# Sample # Lattice a $    6.28 $ AA
+# Sample # Lattice b $    6.28 $ AA
+# Sample # Lattice c $    6.28 $ AA
+# Sample # alpha $   90.00 $ degrees
+# Sample # beta $   90.00 $ degrees
+# Sample # gamma $   90.00 $ degrees
+# Sample # u vector $    0.00,    0.00,    1.00 $ r.l.u.
+# Sample #
+# Beamline # Photon energy       $  516.00 $ eV
+# Beamline # Slit height         $   20.00 $ µm
+# Beamline # Monochr. cff-value  $    3.00 $ 
+# Beamline # Diffr. order        $  1 $ 
+# Beamline # Harmonics           $  1 $ 
+# Beamline # RingCurrent         $  297.3512 $ mA
+# Beamline # BeamShutter      $  open $ 
+# Beamline # Vacuum Valves  $    1e+09 $ 
+# Beamline # UndulatorGap   $   29.86 $ 
+# Beamline # AU Top Slit    $    1.00 $ 
+# Beamline # AU Bottom Slit $   -1.00 $ 
+# Beamline # AU Wall Slit   $    1.50 $ 
+# Beamline # AU Ring Slit   $   -1.50 $ 
+# Beamline # Mirror Offset  $    8.132429 $ 
+# Beamline # Grating Offset $    3.220547 $ 
+# Beamline # Mirror Phi     $ -20233.703743 $ deg.
+# Beamline # Grating Psi    $ -1972.776912 $ deg.
+# Beamline # SMU1, pos M1   $    3.52 $ 
+# Beamline # SMU1, pos M2   $   44.30 $ 
+# Beamline # SMU1, pos M3   $   37.34 $ 
+# Beamline # SMU1, pos M4   $   26.72 $ 
+# Beamline # SMU1, pos M5   $   37.27 $ 
+# Beamline # SMU2, pos M1   $    1.52 $ 
+# Beamline # SMU2, pos M2   $   30.31 $ 
+# Beamline # SMU2, pos M3   $   27.91 $ 
+# Beamline # SMU2, pos M4   $   28.19 $ 
+# Beamline # SMU2, pos M5   $   28.75 $ 
+# RIXS # Grating $ low energy $ 
+# RIXS # 2 theta $  135.000 $ deg
+# RIXS # Frame Height $  581.952 $ deg
+# RIXS # Frame Zpos $  501.952 $ deg
+# RIXS # alpha  $   86.811 $ deg 
+# RIXS # alt-alpha $ 3.189 $ deg
+# RIXS # beta   $   83.033 $ deg 
+# RIXS # alt-beta $ 6.967 $ deg
+# RIXS # gamma  $   19.996 $ deg
+# RIXS # zeta   $  -1.000e-02 $ deg  (GRTG_YDIR)
+# RIXS # r1     $  969.000 $ mm 
+# RIXS # r1_true $  969.415 $ mm 
+# RIXS # r2      $ 3170.025 $ mm 
+# RIXS # Q       $    0.483 $ 1/Ang
+# RIXS # HKL   
+# Grating # Type (chosen) $ low energy $  (actually chosen)     
+# Grating # Type (currently in place) $ low energy $ (from motor position) 
+# Grating # alpha $   86.811 $ deg 
+# Grating # alt-alpha $ 3.189 $ deg
+# Grating # PosX $  -43.250 $ mm
+# Grating # PosY $    0.000 $ mm
+# Grating # PosZ $    7.500 $ mm
+# Grating # DirY $  -1.000e-02 $ deg
+# Is Continuous Motion active?  $ false $ 
+# Continous Motion Horizontal Amplitude $    1.000 $ mm
+# Continous Motion Vertical Amplitude $    1.000 $ mm
+# Continous Motion Horizontal Speed $   2.000e-03 $ mm/s
+# Continous Motion Vertical Speed $    1.000 $ mm/s
+# Continous Motion Line Distance $    0.050 $ mm
+# Starting position $  $ 
+# Manipulator $ low temperature $ 
+# ARM-THETA           $  135.000 $  deg
+# MPTR-XPOS (BeamIn)  $   -0.469 $  mm 
+# MPTR-YPOS (BeamOut) $    3.352 $  mm 
+# MPTR-ZPOS (VertPos) $  -25.713 $  mm 
+# MPTR-ZDIR (RotVert) $   20.480 $  deg
+# MPTR2-ROT (RotSmpl) $    4.500 $  deg
+# MPTR2-INCL          $  -12.167 $  deg
+# Final position $  $ 
+# Manipulator # Manipulator $ low temperature $ 
+# Manipulator # ARM-THETA           $  135.000 $  deg
+# Manipulator # MPTR-XPOS (BeamIn)  $   -0.469 $  mm 
+# Manipulator # MPTR-YPOS (BeamOut) $    3.352 $  mm 
+# Manipulator # MPTR-ZPOS (VertPos) $  -25.713 $  mm 
+# Manipulator # MPTR-ZDIR (RotVert) $   20.480 $  deg
+# Manipulator # MPTR2-ROT (RotSmpl) $    4.500 $  deg
+# Manipulator # MPTR2-INCL          $  -12.167 $  deg
+#-------------------------------------------
