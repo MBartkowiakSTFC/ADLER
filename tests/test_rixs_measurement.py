@@ -3,8 +3,8 @@ import tempfile
 
 import pytest
 
-from src.ADLERdata.AdlerData import DATA
-from src.ADLERcalc.RixsMeasurement import RixsMeasurement
+from ADLER.ADLERdata.AdlerData import DATA
+from ADLER.ADLERcalc.RixsMeasurement import RixsMeasurement
 
 file_wd = os.path.dirname(os.path.realpath(__file__))
 

@@ -28,8 +28,8 @@ import sys
 from scipy.fftpack import rfft, irfft
 from astropy.io import fits as fits_module
 
-#from ADLERcalc.imageUtils import RemoveCosmics
-#from ADLERcalc.arrayUtils import guess_XAS_xaxis
+#from ADLER.ADLERcalc.imageUtils import RemoveCosmics
+#from ADLER.ADLERcalc.arrayUtils import guess_XAS_xaxis
 
 def guess_XAS_xaxis(vallog):
     relval = 1e15

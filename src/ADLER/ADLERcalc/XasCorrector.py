@@ -26,7 +26,7 @@ from scipy.interpolate import interp1d
 
 from PyQt6.QtCore import  QObject, pyqtSignal, pyqtSlot
 
-from ADLERcalc.ioUtils import read_fluxcorr_curves
+from ADLER.ADLERcalc.ioUtils import read_fluxcorr_curves
 
 class XasCorrector(QObject):
     def __init__(self, parent = None):

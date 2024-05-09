@@ -41,14 +41,14 @@ from scipy.interpolate import interp1d
 
 from PyQt6.QtCore import QDate, QTime
 
-from ADLERcalc.DataHandling import DataGroup, DataEntry
-from ADLERcalc.ioUtils import WriteProfile, ReadAndor, ReadAsc, ReadFits,\
+from ADLER.ADLERcalc.DataHandling import DataGroup, DataEntry
+from ADLER.ADLERcalc.ioUtils import WriteProfile, ReadAndor, ReadAsc, ReadFits,\
                               load_datheader, load_datlog, RemoveCosmics
-from ADLERcalc.fitUtils import polynomial, fit_polynomial, gaussian
-from ADLERcalc.imageUtils import elastic_line, curvature_profile, make_profile
-from ADLERcalc.fitUtils import gauss_denum
-from ADLERcalc.qtObjects import MergeManyCurves, MergeManyArrays
-from ADLERcalc.arrayUtils import rand_mt
+from ADLER.ADLERcalc.fitUtils import polynomial, fit_polynomial, gaussian
+from ADLER.ADLERcalc.imageUtils import elastic_line, curvature_profile, make_profile
+from ADLER.ADLERcalc.fitUtils import gauss_denum
+from ADLER.ADLERcalc.qtObjects import MergeManyCurves, MergeManyArrays
+from ADLER.ADLERcalc.arrayUtils import rand_mt
 
 class RixsMeasurement():
     def __init__(self, filenames = [], max_threads = 1, tdb_profile = None):

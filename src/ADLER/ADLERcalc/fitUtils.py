@@ -33,7 +33,7 @@ except:
 from scipy.optimize import leastsq, shgo, minimize
 from scipy.interpolate import interp1d
 
-from ADLERcalc.arrayUtils import primitive_rebin
+from ADLER.ADLERcalc.arrayUtils import primitive_rebin
 
 
 gauss_denum = 2.0 * (2.0 * math.log(2.0))**0.5

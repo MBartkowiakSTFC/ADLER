@@ -26,8 +26,8 @@ import math
 import numpy as np
 from scipy.optimize import leastsq
 
-from ADLERcalc.qtObjects import MergeCurves
-from ADLERcalc.ioUtils import guess_XAS_xaxis
+from ADLER.ADLERcalc.qtObjects import MergeCurves
+from ADLER.ADLERcalc.ioUtils import guess_XAS_xaxis
 
 try:
     rand_mt = np.random.Generator(np.random.MT19937(np.random.SeedSequence(31337)))

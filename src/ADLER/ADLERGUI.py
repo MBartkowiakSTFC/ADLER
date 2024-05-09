@@ -36,16 +36,16 @@ from PyQt6.QtWidgets import QFrame,  QTabWidget, QSizePolicy, QApplication,  QMa
                                                 QLineEdit, QHBoxLayout, QAbstractItemView, \
                                                 QFileDialog, QLabel
 
-from NewSingleTab import SingleTab
-from CorrectionsTab import CorrectionsTab
-from CompareRixsTab import NewPostprocessingTab as PostprocessingTab
-from XASplottingTab import XASplottingTab
-from FittingTab import FittingTab
-from LogviewerTab import LogviewerTab
-from BeamlineTab import BeamlineTab
-from ExtendGUI import LogBox
-from FileFinder import PeaxisDataModel
-from ExperimentTree import TableView
+from ADLER.NewSingleTab import SingleTab
+from ADLER.CorrectionsTab import CorrectionsTab
+from ADLER.CompareRixsTab import NewPostprocessingTab as PostprocessingTab
+from ADLER.XASplottingTab import XASplottingTab
+from ADLER.FittingTab import FittingTab
+from ADLER.LogviewerTab import LogviewerTab
+from ADLER.BeamlineTab import BeamlineTab
+from ADLER.ExtendGUI import LogBox
+from ADLER.FileFinder import PeaxisDataModel
+from ADLER.ExperimentTree import TableView
 
 ADLER_VERSION_STRING = "4.2 from 09.04.2023"
 
@@ -585,5 +585,8 @@ def startGUI(some_args, pdict = None):
     root.show()
     app.exec()
 
-if __name__ == '__main__':
-    startGUI(sys.argv, pdict = paths)
+def main():
+    startGUI(sys.argv, pdict=paths)
+
+if __name__ == "__main__":
+    main()

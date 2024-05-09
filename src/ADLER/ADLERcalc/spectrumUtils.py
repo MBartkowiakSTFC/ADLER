@@ -25,11 +25,11 @@ import os
 
 import numpy as np
 
-from ADLERcalc.ioUtils import load_datheader, load_datlog, ReadAndor,\
+from ADLER.ADLERcalc.ioUtils import load_datheader, load_datlog, ReadAndor,\
                               WriteEnergyProfile, read_1D_curve_extended
-from ADLERcalc.ioUtils import RemoveCosmics
-from ADLERcalc.arrayUtils import guess_XAS_xaxis
-from ADLERcalc.arrayUtils import merge2curves
+from ADLER.ADLERcalc.ioUtils import RemoveCosmics
+from ADLER.ADLERcalc.arrayUtils import guess_XAS_xaxis
+from ADLER.ADLERcalc.arrayUtils import merge2curves
 
 def load_file(fname, bpp, cray, poly = None):
     fpath, shortname = os.path.split(fname)

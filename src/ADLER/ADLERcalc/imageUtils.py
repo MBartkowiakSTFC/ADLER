@@ -25,10 +25,10 @@ import numpy as np
 
 from scipy.optimize import leastsq
 
-from ADLERcalc.fitUtils import gaussian, fit_gaussian, fit_gaussian_fixedbase,\
+from ADLER.ADLERcalc.fitUtils import gaussian, fit_gaussian, fit_gaussian_fixedbase,\
                                chisquared, polynomial
-from ADLERcalc.arrayUtils import discrete_rebin
-from ADLERcalc.qtObjects import MergeCurves
+from ADLER.ADLERcalc.arrayUtils import discrete_rebin
+from ADLER.ADLERcalc.qtObjects import MergeCurves
 
 def elastic_line(profile, background, fixwidth = None, olimits = (None, None)):
     """

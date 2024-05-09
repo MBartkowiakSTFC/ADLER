@@ -33,10 +33,10 @@ from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog,   \
                                                 QPushButton,  QVBoxLayout, QHBoxLayout, QFormLayout, QScrollArea
 # from PyQt5 import sip
-from VariablesGUI import VarBox
-from ADLERcalc.AdlerCore import NewAdlerCore as AdlerCore
-from ExtendGUI import AdlerTab
-from ADLERplot.Plotter import Plotter
+from ADLER.VariablesGUI import VarBox
+from ADLER.ADLERcalc.AdlerCore import NewAdlerCore as AdlerCore
+from ADLER.ExtendGUI import AdlerTab
+from ADLER.ADLERplot.Plotter import Plotter
 
 mpl_scale = 1.0
 mpl_figure_scale = 1.0

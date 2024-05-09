@@ -33,12 +33,12 @@ from PyQt6.QtWidgets import QApplication, QGraphicsView, QDialog, QWidget, QSize
                                                 QComboBox, QFrame, QLabel
 from PyQt6 import sip
 
-from ExtendGUI import LogBox, ManyButtons, PatternDialog
-from LogviewerTab import LogviewerTab
-from NewSingleTab import SingleTab
-from FileFinder import header_read
-from ADLERcalc.spectrumUtils import precise_merge
-from ADLERcalc.ioUtils import read_1D_curve, simplify_number_range, resource_path
+from ADLER.ExtendGUI import LogBox, ManyButtons, PatternDialog
+from ADLER.LogviewerTab import LogviewerTab
+from ADLER.NewSingleTab import SingleTab
+from ADLER.FileFinder import header_read
+from ADLER.ADLERcalc.spectrumUtils import precise_merge
+from ADLER.ADLERcalc.ioUtils import read_1D_curve, simplify_number_range, resource_path
 # from geom_tools import normalise, length, arb_rotation
 
 last_object = 1

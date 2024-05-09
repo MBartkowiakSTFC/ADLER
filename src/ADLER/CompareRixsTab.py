@@ -38,10 +38,10 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog, QTableVie
                                                 QDockWidget, QScrollArea, QSplitter, QStackedWidget, \
                                                 QAbstractItemView, QMenu, QApplication
 # from PyQt6 import sip
-from VariablesGUI import VarBox, CheckGroup
-from ADLERcalc.SimpleCore import NewSimpleCore as SimpleCore
-from ADLERplot.Plotter import Plotter
-from ExtendGUI import AdlerTab
+from ADLER.VariablesGUI import VarBox, CheckGroup
+from ADLER.ADLERcalc.SimpleCore import NewSimpleCore as SimpleCore
+from ADLER.ADLERplot.Plotter import Plotter
+from ADLER.ExtendGUI import AdlerTab
 
 
 

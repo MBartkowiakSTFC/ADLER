@@ -35,11 +35,11 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QFileDialog,   \
                                                 QPushButton,  QVBoxLayout, QHBoxLayout, QFormLayout, QScrollArea
 # from PyQt6 import QtGui, QtCore, QtWidgets
 # from PyQt6 import sip
-from VariablesGUI import VarBox
-from ADLERcalc.AdlerCore import NewAdlerCore as AdlerCore
-from ADLERcalc.RixsMeasurement import RixsMeasurement
-from ExtendGUI import AdlerTab, PeaxisDataModel, PeaxisTableView
-from ADLERplot.Plotter import Plotter
+from ADLER.VariablesGUI import VarBox
+from ADLER.ADLERcalc.AdlerCore import NewAdlerCore as AdlerCore
+from ADLER.ADLERcalc.RixsMeasurement import RixsMeasurement
+from ADLER.ExtendGUI import AdlerTab, PeaxisDataModel, PeaxisTableView
+from ADLER.ADLERplot.Plotter import Plotter
 
 
 mpl_scale = 1.0

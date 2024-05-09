@@ -31,16 +31,16 @@ from scipy.interpolate import interp1d
 from scipy.fftpack import rfft, irfft, fftfreq
 from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
 
-from ADLERcalc.RixsMeasurement import RixsMeasurement
-from ADLERcalc.ioUtils import WriteProfile, simplify_number_range, resource_path, simple_read
-from ADLERcalc.fitUtils import polynomial, fit_polynomial, gauss_denum
-from ADLERcalc.imageUtils import elastic_line, curvature_profile, make_profile,\
+from ADLER.ADLERcalc.RixsMeasurement import RixsMeasurement
+from ADLER.ADLERcalc.ioUtils import WriteProfile, simplify_number_range, resource_path, simple_read
+from ADLER.ADLERcalc.fitUtils import polynomial, fit_polynomial, gauss_denum
+from ADLER.ADLERcalc.imageUtils import elastic_line, curvature_profile, make_profile,\
                                  apply_offset_to_2D_data, SphericalCorrection,\
                                  make_histogram, make_stripe
-#from ADLERcalc.spectrumUtils import Shift
-from ADLERcalc.qtObjects import MergeCurves, ShiftProfilesParallel, Worker, CustomThreadpool
-from ADLERcalc.arrayUtils import rand_mt, profile_offsets
-from ADLERdata.AdlerData import DATA
+#from ADLER.ADLERcalc.spectrumUtils import Shift
+from ADLER.ADLERcalc.qtObjects import MergeCurves, ShiftProfilesParallel, Worker, CustomThreadpool
+from ADLER.ADLERcalc.arrayUtils import rand_mt, profile_offsets
+from ADLER.ADLERdata.AdlerData import DATA
 
 class NewAdlerCore(QObject):
     fittingresult = pyqtSignal(object)
@@ -75,6 +75,7 @@ class NewAdlerCore(QObject):
         self.thread_exit = thr_exit
         self.temp_path = startpath
         self.temp_name = ""
+        self.tdb_profile = None
         # self.threadpool = QThreadPool(self)
         # self.threadpool = QThreadPool.globalInstance()
         self.threadpool = CustomThreadpool(MAX_THREADS = max_threads)
@@ -95,7 +96,6 @@ class NewAdlerCore(QObject):
         self.name_as_segments = []
         self.fft_plots =[]
         self.energies = []
-        self.tdb_profile = None
         self.energy_profile = None
         self.fitted_peak_energy = None
         self.fitting_params_energy = None

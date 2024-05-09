@@ -37,12 +37,12 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtWidgets import QApplication
 
 
-from ADLERcalc.RixsMeasurement import RixsMeasurement
-from ADLERcalc.ioUtils import read_1D_curve_extended,\
+from ADLER.ADLERcalc.RixsMeasurement import RixsMeasurement
+from ADLER.ADLERcalc.ioUtils import read_1D_curve_extended,\
                               WriteEnergyProfile
-from ADLERcalc.imageUtils import elastic_line_anyx
-from ADLERcalc.arrayUtils import merge2curves
-from ADLERcalc.fitUtils import gauss_denum
+from ADLER.ADLERcalc.imageUtils import elastic_line_anyx
+from ADLER.ADLERcalc.arrayUtils import merge2curves
+from ADLER.ADLERcalc.fitUtils import gauss_denum
 
 #### Object-Oriented part
 

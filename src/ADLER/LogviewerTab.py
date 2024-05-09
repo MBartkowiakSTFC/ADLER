@@ -32,10 +32,10 @@ from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QTableWidget, QFormLayout, QFileDialog,   \
                                                 QPushButton,  QVBoxLayout, QHBoxLayout, QTableWidgetItem, QScrollArea
 # from PyQt6 import sip
-from VariablesGUI import VarBox
-from ExtendGUI import AdlerTab
-from ADLERcalc.ioUtils import load_only_logs,  load_and_average_logs, load_filter_and_average_logs
-from ADLERplot.Plotter import Plotter
+from ADLER.VariablesGUI import VarBox
+from ADLER.ExtendGUI import AdlerTab
+from ADLER.ADLERcalc.ioUtils import load_only_logs,  load_and_average_logs, load_filter_and_average_logs
+from ADLER.ADLERplot.Plotter import Plotter
 
 mpl_scale = 1.0
 mpl_figure_scale = 1.0

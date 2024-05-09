@@ -34,11 +34,11 @@ from PyQt6.QtWidgets import QFrame, QSizePolicy, QWidget, QTableWidget, QFormLay
                                                 QPushButton,  QVBoxLayout, QHBoxLayout, QTableWidgetItem, \
                                                 QScrollArea
 # from PyQt5 import sip
-from VariablesGUI import VarBox
-from ExtendGUI import AdlerTab
-from ADLERcalc.ioUtils import load_only_logs, load_lise_logs
-from ADLERcalc.xasUtils import fit_neon_gas, fit_n2_gas, fit_edge_profile, gauss_denum
-from ADLERplot.Plotter import Plotter
+from ADLER.VariablesGUI import VarBox
+from ADLER.ExtendGUI import AdlerTab
+from ADLER.ADLERcalc.ioUtils import load_only_logs, load_lise_logs
+from ADLER.ADLERcalc.xasUtils import fit_neon_gas, fit_n2_gas, fit_edge_profile, gauss_denum
+from ADLER.ADLERplot.Plotter import Plotter
 
 mpl_scale = 1.0
 mpl_figure_scale = 1.0

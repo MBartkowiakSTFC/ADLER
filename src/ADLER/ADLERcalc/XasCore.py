@@ -31,12 +31,12 @@ import copy
 from scipy.fftpack import rfft, irfft, fftfreq
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from ADLERcalc.XasCorrector import XasCorrector
-from ADLERcalc.ioUtils import read_1D_xas, load_only_logs, resource_path, load_and_average_logs,\
+from ADLER.ADLERcalc.XasCorrector import XasCorrector
+from ADLER.ADLERcalc.ioUtils import read_1D_xas, load_only_logs, resource_path, load_and_average_logs,\
                               WriteEnergyProfile
-from ADLERcalc.spectrumUtils import place_points_in_bins
-from ADLERcalc.arrayUtils import merge2curves_errors, place_data_in_bins
-from ADLERdata.AdlerData import DATA
+from ADLER.ADLERcalc.spectrumUtils import place_points_in_bins
+from ADLER.ADLERcalc.arrayUtils import merge2curves_errors, place_data_in_bins
+from ADLER.ADLERdata.AdlerData import DATA
 
 class XasCore(QObject):
     cleared = pyqtSignal()

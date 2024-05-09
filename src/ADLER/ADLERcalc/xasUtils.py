@@ -26,7 +26,7 @@ the mathematical treatment of the XAS spectra.
 import numpy as np
 from scipy.optimize import leastsq
 from scipy.interpolate import interp1d
-from ADLERcalc.fitUtils import my_voigt, gauss_denum
+from ADLER.ADLERcalc.fitUtils import my_voigt, gauss_denum
 
 def single_n2_profile(params, xarr, fixed_lorentz = 0.12, yarr = None, extraweight = False):
     num_peaks = int((len(params) - 3)/2)

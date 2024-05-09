@@ -30,10 +30,10 @@ import copy
 # import ctypes
 
 from PyQt6.QtCore import  QObject, pyqtSignal, pyqtSlot
-from ADLERcalc.arrayUtils import merge2curves_errors
-from ADLERcalc.fitUtils import global_fitting_optimiser, iterative_fitting_optimiser
-from ADLERcalc.ioUtils import WriteEnergyProfile, read_1D_curve_extended
-from ADLERcalc.spectrumUtils import place_points_in_bins
+from ADLER.ADLERcalc.arrayUtils import merge2curves_errors
+from ADLER.ADLERcalc.fitUtils import global_fitting_optimiser, iterative_fitting_optimiser
+from ADLER.ADLERcalc.ioUtils import WriteEnergyProfile, read_1D_curve_extended
+from ADLER.ADLERcalc.spectrumUtils import place_points_in_bins
 
 
 class FitCore(QObject):

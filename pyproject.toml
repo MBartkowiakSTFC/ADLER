@@ -17,6 +17,9 @@ classifiers = [
         'Development Status :: 4 - Beta',
 
         'Intended Audience :: Science/Research',
+        'Topic :: Scientific/Engineering :: Chemistry',
+        'Topic :: Scientific/Engineering :: Physics',
+        'Topic :: Scientific/Engineering :: Visualization',
 
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.9',
@@ -44,7 +47,13 @@ dependencies = [
 # repository = 
 
 [tool.setuptools]
-package-dir = {"ADLER" = "src"}
+package-dir = {"" = "src"}
+
+# [tool.setuptools.packages.find]
+# where = ["src"]
+
+[project.scripts]
+adler_gui = "ADLER.ADLERGUI:main"
 
 # [tool.setuptools.packages.find]
 # where = ["src"]

@@ -32,10 +32,10 @@ from scipy.optimize import  shgo, leastsq
 from PyQt6.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QMutex
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot,QThread, QMutex,  QSemaphore
 
-from ExtendGUI import ThreadpoolWorker
-from ADLERcalc.ioUtils import ReadAndor, load_datheader, load_datlog
-from ADLERcalc.ioUtils import RemoveCosmics
-#from ADLERcalc.arrayUtils import shgo_profile_offsets
+from ADLER.ExtendGUI import ThreadpoolWorker
+from ADLER.ADLERcalc.ioUtils import ReadAndor, load_datheader, load_datlog
+from ADLER.ADLERcalc.ioUtils import RemoveCosmics
+#from ADLER.ADLERcalc.arrayUtils import shgo_profile_offsets
 
 @jit(nopython = True, parallel = True)
 def helper_multiplier(overlap, data):

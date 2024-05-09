@@ -26,8 +26,8 @@ from PyQt6.QtCore import QAbstractTableModel,  QObject, QVariant, Qt
 from PyQt6.QtCore import pyqtSlot, pyqtSignal
 from PyQt6.QtGui import QStandardItemModel,  QStandardItem
 
-from ADLERcalc.ioUtils import header_read
-from ExperimentTree import SingleFile
+from ADLER.ADLERcalc.ioUtils import header_read
+from ADLER.ExperimentTree import SingleFile
 
 LOG_PATH = os.path.join("D:", "Measurements")
 
