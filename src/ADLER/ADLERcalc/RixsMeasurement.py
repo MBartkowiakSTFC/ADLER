@@ -253,7 +253,7 @@ class RixsMeasurement:
                 try:
                     element.keys()
                 except AttributeError:
-                    newln = tkey + " $ " + element.string
+                    newln = tkey + " $ " + "".join([str(x) for x in header[hk] if str(x).isprintable()]) #element.string
                     target.write(
                         " ".join(["#HEADER#", newln.strip().strip("\n"), "\n"])
                     )

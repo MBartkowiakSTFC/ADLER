@@ -49,6 +49,10 @@ class Plotter:
         text="",
         label_override=["", ""],
         curve_labels=[],
+        title = "",
+        autolimits = True,
+        eline = None,
+        efactor = None,
         legend_pos=0,
     ):
         if self.figure == None:
@@ -63,15 +67,26 @@ class Plotter:
         ptlabels = []
         axes = self.figure.add_subplot(111)
         mainpos = axes.get_position()
-        mainpos.y0 = 0.25  # for example 0.2, choose your value
+        mainpos.y0 = 0.15  # for example 0.2, choose your value
         # mainpos.ymax = 1.0
-        mainpos.y1 = 0.99
+        mainpos.y1 = 0.9
         axes.set_position(mainpos)
         axlabels = ["Pixels (vertical)", labels[0]]
         # topval = np.nan_to_num(pic).max()
         # if topval == 0.0:
         #     topval = 1.0
         # xxx = axes.plot(pic[:,0], pic[:,1], '-')
+        if eline is not None:
+            if eline > 0:
+                axes.axvline(eline, linestyle = ":")
+                ntext = "Nominal elastic line position = " + str(round(eline, 3)) + '\n'+text
+            else:
+                ntext = text
+        else:
+            ntext = text
+        if efactor is not None:
+            if efactor > 0:
+                ntext = 'Energy scale: ' + str(round(efactor, 3)) + ' meV/channel \n'+ntext
         for xp, p in enumerate(pic):
             if len(p[0]) > 2:
                 axes.errorbar(p[:, 0], p[:, 1], yerr=p[:, 2], fmt="-s")
@@ -89,6 +104,8 @@ class Plotter:
             axes.set_ylabel(label_override[1])
         else:
             axes.set_ylabel(axlabels[1])
+        if len(title) > 0:
+            axes.set_title(title)
         box = axes.get_position()
         axes.set_position(
             [box.x0, box.y0 + box.height * 0.2, box.width, box.height * 0.8]
@@ -139,6 +156,7 @@ class Plotter:
         text="",
         label_override=["", ""],
         curve_labels=[],
+        title = "",
         max_offset=0.2,
         legend_pos=0,
     ):
@@ -154,9 +172,9 @@ class Plotter:
         ptlabels = []
         axes = self.figure.add_subplot(111)
         mainpos = axes.get_position()
-        mainpos.y0 = 0.25  # for example 0.2, choose your value
+        mainpos.y0 = 0.15  # for example 0.2, choose your value
         # mainpos.ymax = 1.0
-        mainpos.y1 = 0.99
+        mainpos.y1 = 0.9
         axes.set_position(mainpos)
         axlabels = ["Pixels (vertical)", labels[0]]
         for n, l in enumerate(curve_labels):
@@ -187,6 +205,8 @@ class Plotter:
             axes.set_ylabel(label_override[1])
         else:
             axes.set_ylabel(axlabels[1])
+        if len(title) > 0:
+            axes.set_title(title)
         box = axes.get_position()
         axes.set_position(
             [box.x0, box.y0 + box.height * 0.2, box.width, box.height * 0.8]
@@ -430,6 +450,8 @@ class Plotter:
         axes.grid(True)
         axes.set_xlabel(axlabels[0])
         axes.set_ylabel(axlabels[1])
+        if len(text) > 0:
+            axes.set_title(text)
         box = axes.get_position()
         axes.set_position(
             [box.x0, box.y0 + box.height * 0.2, box.width, box.height * 0.8]
