@@ -13,6 +13,7 @@ file2 = os.path.join(file_wd, "data", "VI3grazing-65K_R0011.sif")
 
 def test_load_one_measurement():
     rixs_instance1 = RixsMeasurement([file1])
+    rixs_instance1.postprocess()
     assert abs(rixs_instance1.energy - 516.0) < 1e-10
 
 def test_load_and_merge_two():

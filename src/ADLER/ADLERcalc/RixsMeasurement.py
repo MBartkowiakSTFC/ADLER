@@ -113,7 +113,9 @@ class RixsMeasurement:
         self.arbitrary_unit = -1
         self.maxthreads = max_threads
         self.active = True  # only a temporary setting in the GUI
-
+        if filenames:
+            self.loadFiles(filenames)
+            
     def summariseCrucialParts(self):
         pdict = {}
         pdict["calibration"] = []
