@@ -80,6 +80,7 @@ class NewAdlerCore(QObject):
         # self.threadpool = QThreadPool.globalInstance()
         self.threadpool = CustomThreadpool(MAX_THREADS = max_threads)
         # self.threadpool.setMaxThreadCount(max_threads)
+        self.tdb_profile = None
         self.the_object = RixsMeasurement(max_threads = max_threads,
                                           tdb_profile=self.tdb_profile)
         self.data,  self.header,  self.logvals,  self.logvalnames = None,  None,  None,  None
