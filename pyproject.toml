@@ -53,7 +53,7 @@ package-dir = {"" = "src"}
 # where = ["src"]
 
 [project.scripts]
-adler_gui = "ADLER.ADLERGUI:main"
+adler = "ADLER.ADLERGUI:main"
 
 # [tool.setuptools.packages.find]
 # where = ["src"]
