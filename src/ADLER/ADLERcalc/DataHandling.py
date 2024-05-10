@@ -1,4 +1,3 @@
-
 #    This file is part of ADLER.
 #
 #    ADLER is free software: you can redistribute it and/or modify
@@ -13,7 +12,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-# 
+#
 # Copyright (C) Maciej Bartkowiak, 2019-2023
 
 import numpy as np
@@ -34,35 +33,37 @@ def decompress_array(compdata, shape, dtype):
     truedata = linedata.reshape(shape)
     return truedata
 
+
 def loadtext_wrapper(fname):
     result = []
     try:
-        source = open(fname, 'rb')
+        source = open(fname, "rb")
     except:
         return None
     else:
         for n, line in enumerate(source):
             try:
-                textline = line.decode('utf-8')
+                textline = line.decode("utf-8")
             except:
                 try:
-                    textline = line.decode('cp1252')
+                    textline = line.decode("cp1252")
                 except:
                     continue
                 else:
-                    result.append(textline.strip('\n'))
+                    result.append(textline.strip("\n"))
             else:
-                result.append(textline.strip('\n'))
+                result.append(textline.strip("\n"))
         source.close()
         return result
 
 
 #### data processing part
 
-def read_1D_curve(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep = ','):
+
+def read_1D_curve(fname, xcol=0, ycol=1, ecol=-1, comment="#", sep=","):
     curve = []
     envals = []
-    units = 'Detector channels'
+    units = "Detector channels"
     source = loadtext_wrapper(fname)
     if source is None:
         print("could not read file: ", fname)
@@ -71,8 +72,8 @@ def read_1D_curve(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep = ','):
         for line in source:
             if len(line.split()) > 0:
                 if comment in line.split()[0][0]:
-                    if 'hoton energy' in line:
-                        label = line.split('hoton energy')[-1].strip()
+                    if "hoton energy" in line:
+                        label = line.split("hoton energy")[-1].strip()
                         for tok in label.split():
                             try:
                                 tval = float(tok)
@@ -81,7 +82,7 @@ def read_1D_curve(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep = ','):
                             else:
                                 envals.append(tok)
                 else:
-                    if (sep == ' ') or (sep == ''):
+                    if (sep == " ") or (sep == ""):
                         xy = [float(z) for z in line.split()]
                     else:
                         try:
@@ -93,12 +94,12 @@ def read_1D_curve(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep = ','):
                     else:
                         curve.append((xy[xcol], xy[ycol], xy[ecol]))
         curve = np.array(curve)
-        sorting = np.argsort(curve[:,0])
+        sorting = np.argsort(curve[:, 0])
         curve = curve[sorting]
         print(curve.shape)
         # source.close()
-        xmin,  xmax = curve[:, 0].min(),  curve[:, 0].max()
-        if xmin <0:
+        xmin, xmax = curve[:, 0].min(), curve[:, 0].max()
+        if xmin < 0:
             units = "Energy Transfer [eV]"
         elif xmax - xmin > 1000.0:
             units = "Detector channels"
@@ -108,15 +109,12 @@ def read_1D_curve(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep = ','):
             envals = [-1.0]
     return curve, envals, units
 
-def read_1D_curve_extended(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep = ','):
+
+def read_1D_curve_extended(fname, xcol=0, ycol=1, ecol=-1, comment="#", sep=","):
     curve = []
     envals = []
-    pardict = {'energy': -1.0, 
-    'temperature':-1.0, 
-    'Q':-1.0, 
-    '2theta':-1.0
-    }
-    units = 'Detector channels'
+    pardict = {"energy": -1.0, "temperature": -1.0, "Q": -1.0, "2theta": -1.0}
+    units = "Detector channels"
     source = loadtext_wrapper(fname)
     if source is None:
         print("could not read file: ", fname)
@@ -125,8 +123,8 @@ def read_1D_curve_extended(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep
         for line in source:
             if len(line.split()) > 0:
                 if comment in line.split()[0][0]:
-                    if 'hoton energy' in line:
-                        label = line.split('hoton energy')[-1].strip()
+                    if "hoton energy" in line:
+                        label = line.split("hoton energy")[-1].strip()
                         for tok in label.split():
                             try:
                                 tval = float(tok)
@@ -134,39 +132,39 @@ def read_1D_curve_extended(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep
                                 continue
                             else:
                                 envals.append(tok)
-                                pardict['energy'] = tval
-                    elif 'Temperature' in line:
-                        label = line.split('Temperature')[-1].strip()
+                                pardict["energy"] = tval
+                    elif "Temperature" in line:
+                        label = line.split("Temperature")[-1].strip()
                         for tok in label.split():
                             try:
                                 tval = float(tok)
                             except:
                                 continue
                             else:
-                                pardict['temperature'] = tval
+                                pardict["temperature"] = tval
                                 break
-                    elif 'Q' in line:
-                        label = line.split('Q')[-1].strip()
+                    elif "Q" in line:
+                        label = line.split("Q")[-1].strip()
                         for tok in label.split():
                             try:
                                 tval = float(tok)
                             except:
                                 continue
                             else:
-                                pardict['Q'] = tval
+                                pardict["Q"] = tval
                                 break
-                    elif '2 theta' in line:
-                        label = line.split('2 theta')[-1].strip()
+                    elif "2 theta" in line:
+                        label = line.split("2 theta")[-1].strip()
                         for tok in label.split():
                             try:
                                 tval = float(tok)
                             except:
                                 continue
                             else:
-                                pardict['2theta'] = tval
+                                pardict["2theta"] = tval
                                 break
                 else:
-                    if (sep == ' ') or (sep == ''):
+                    if (sep == " ") or (sep == ""):
                         xy = [float(z) for z in line.split()]
                     else:
                         try:
@@ -178,12 +176,12 @@ def read_1D_curve_extended(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep
                     else:
                         curve.append((xy[xcol], xy[ycol], xy[ecol]))
         curve = np.array(curve)
-        sorting = np.argsort(curve[:,0])
+        sorting = np.argsort(curve[:, 0])
         curve = curve[sorting]
         print(curve.shape)
         # source.close()
-        xmin,  xmax = curve[:, 0].min(),  curve[:, 0].max()
-        if xmin <0:
+        xmin, xmax = curve[:, 0].min(), curve[:, 0].max()
+        if xmin < 0:
             units = "Energy Transfer [eV]"
         elif xmax - xmin > 1000.0:
             units = "Detector channels"
@@ -192,6 +190,7 @@ def read_1D_curve_extended(fname, xcol =0,  ycol=1, ecol= -1, comment = '#', sep
         if len(envals) == 0:
             envals = [-1.0]
     return curve, envals, units, pardict
+
 
 def read_1D_xas(fname):
     curve = []
@@ -205,15 +204,15 @@ def read_1D_xas(fname):
         lastline = ""
         for line in source:
             if len(line.split()) > 0:
-                if '#' in line.split()[0][0]:
+                if "#" in line.split()[0][0]:
                     lastline = line
                 else:
                     try:
-                        xy = [float(z) for z in line.split(',')]
+                        xy = [float(z) for z in line.split(",")]
                     except:
                         xy = [float(z) for z in line.split()]
                     curve.append(xy)
-        head = lastline.strip('#\n').split(',')
+        head = lastline.strip("#\n").split(",")
         for coln, tok in enumerate(head):
             if tok == "E":
                 ecol = coln
@@ -238,6 +237,7 @@ def read_1D_xas(fname):
         # source.close()
     return curve, teyvals, tpyvals
 
+
 def ReadFits(fname):
     """Reads the .sif file produced by the Andor iKon-L CCD camera.
     The dimensions of the pixel array can be changed if necessary.
@@ -245,56 +245,62 @@ def ReadFits(fname):
     fitsfile = fits_module.open(fname)
     img = fitsfile[0]
     d_array = img.data
-    if d_array.shape[0] < 2050 and d_array.shape[1] < 2050: # we have a file from the ANDOR camera
+    if (
+        d_array.shape[0] < 2050 and d_array.shape[1] < 2050
+    ):  # we have a file from the ANDOR camera
         return d_array.astype(np.float64), ""
-    else: # we have a file from the Sydor detector
+    else:  # we have a file from the Sydor detector
         return d_array.T.astype(np.float64), ""
+
 
 def ReadAsc(fname):
     """Reads the old 2D .asc file format which for some reason
     was used on PEAXIS in the very beginning.
     Or, if things don't work out, it doesn't read it.
     """
-    source = open(fname, 'r')
+    source = open(fname, "r")
     data = []
     for n, line in enumerate(source):
         if n >= 2048:
             continue
         else:
-            templine = str(line).replace('\t', ' ')
+            templine = str(line).replace("\t", " ")
             toks = [float(x) for x in templine.split()[1:]]
             data.append(toks)
     source.close()
-    d_array = np.array(data)# .astype(np.float64)
-    print('ASC dimensions:',  d_array.shape)
+    d_array = np.array(data)  # .astype(np.float64)
+    print("ASC dimensions:", d_array.shape)
     return d_array.T, ""
 
-def ReadAndor(fname, dimensions = (2048,2048), byte_size=4, data_type='c'):
+
+def ReadAndor(fname, dimensions=(2048, 2048), byte_size=4, data_type="c"):
     """Reads the .sif file produced by the Andor iKon-L CCD camera.
     The dimensions of the pixel array can be changed if necessary.
     """
     size = os.path.getsize(fname)
-    source = open(fname, 'rb')
+    source = open(fname, "rb")
     nrows = dimensions[-1]
-    header, data = [],[]
-    bindata = None    
+    header, data = [], []
+    bindata = None
     total_length = 0
-    header = np.fromfile(source, np.byte, size - 4*dimensions[0]*dimensions[1] -2*4, '') # 2772 is close
-    print("Headersize",  size - 4*dimensions[0]*dimensions[1] -2*4)
-    data = np.fromfile(source, np.float32, dimensions[0]*dimensions[1], '')
+    header = np.fromfile(
+        source, np.byte, size - 4 * dimensions[0] * dimensions[1] - 2 * 4, ""
+    )  # 2772 is close
+    print("Headersize", size - 4 * dimensions[0] * dimensions[1] - 2 * 4)
+    data = np.fromfile(source, np.float32, dimensions[0] * dimensions[1], "")
     header = bytes(header)
-    lines = header.split(b'\n')
+    lines = header.split(b"\n")
     header = []
     for n, line in enumerate(lines):
         try:
-            header.append(line.decode('ascii'))
+            header.append(line.decode("ascii"))
         except UnicodeDecodeError:
-            print('header lines skipped:', n+1, 'with length:', len(line))
+            print("header lines skipped:", n + 1, "with length:", len(line))
     source.close()
     return np.array(data).reshape(dimensions), header
 
 
-class DataEntry():
+class DataEntry:
     """
     The basic class for handling lines from CHaOS data headers.
     The main problem is that CHaOS file headers may change,
@@ -302,7 +308,7 @@ class DataEntry():
     or possibly nothing.
     """
 
-    def __init__(self, input = None, label = ""):
+    def __init__(self, input=None, label=""):
         self._array = None
         self._label = ""
         self._pure_numbers = True
@@ -317,7 +323,7 @@ class DataEntry():
             return len(self._array)
         else:
             return 0
-    
+
     def __add__(self, other):
         if self._label == other._label:
             result = copy.deepcopy(self)
@@ -328,10 +334,10 @@ class DataEntry():
                 raise TypeError("DataEntry: adding numbers to non-numbers")
             return result
         raise ValueError("DataEntry: adding two entries with different labels")
-    
+
     def __str__(self):
         return self.string
-    
+
     def __eq__(self, other):
         comp_labels = self.label == other.label
         comp_values = np.allclose(self.data, other.data)
@@ -340,7 +346,7 @@ class DataEntry():
     @property
     def label(self):
         return self._label
-    
+
     @label.setter
     def label(self, input: str):
         self._label = input.strip()
@@ -396,64 +402,71 @@ class DataEntry():
                 else:
                     self._array = np.array(temp)
                     self._pure_numbers = True
-                    
+
 
 class DataGroup(defaultdict, yaml.YAMLObject):
-    
+
     _last_group = 1
 
     # yaml_tag = '!AdlerDataGroup'
 
-    def __init__(self, default_class = DataEntry, label = None, elements = None):
+    def __init__(self, default_class=DataEntry, label=None, elements=None):
         self.def_class = default_class
         super(DataGroup, self).__init__(self.def_class)
 
         if label is None:
-            self.label = "UnnamedGroup"+str(DataGroup._last_group)
+            self.label = "UnnamedGroup" + str(DataGroup._last_group)
             DataGroup._last_group += 1
         else:
             self.label = label
-        
+
         if elements is not None:
             for line in elements:
                 key, value = line[0], line[1]
                 self.__setitem__(key, value)
-    
+
     def __repr__(self):
         temp = []
         for key in self.keys():
             temp.append((key, self.__getitem__(key)))
-        return "%s(default_class=%r, label=%r, elements=%r)" % (self.__class__.__name__, self.def_class, self.label, temp)
+        return "%s(default_class=%r, label=%r, elements=%r)" % (
+            self.__class__.__name__,
+            self.def_class,
+            self.label,
+            temp,
+        )
 
 
 def store_array(fname, compdata, shape, dtype, maxdim=4, dimlen=5, dtypelen=4):
     ndim = len(shape)
-    header = (maxdim*dimlen+dtypelen)*'0'
+    header = (maxdim * dimlen + dtypelen) * "0"
     for n in np.arange(ndim):
         tnum = shape[n]
         text = str(tnum).zfill(5)
-        header[n*dimlen:(n+1)*dimlen] = text
-    header[maxdim*dimlen:maxdim*dimlen+dtypelen] = dtype.zfill(dtypelen)
-    dump = open(fname, 'wb')
-    dump.write(header.encode('ascii'))
+        header[n * dimlen : (n + 1) * dimlen] = text
+    header[maxdim * dimlen : maxdim * dimlen + dtypelen] = dtype.zfill(dtypelen)
+    dump = open(fname, "wb")
+    dump.write(header.encode("ascii"))
     dump.write(compdata)
     dump.close()
 
-def restore_array(fname, maxdim=4, dimlen=5, dtypelen=4,  buffsize = 8192):
-    source = open(fname, 'rb')
-    header = source.read(maxdim*dimlen+dtypelen)
-    compdata = b''
-    buffer = b'999'
+
+def restore_array(fname, maxdim=4, dimlen=5, dtypelen=4, buffsize=8192):
+    source = open(fname, "rb")
+    header = source.read(maxdim * dimlen + dtypelen)
+    compdata = b""
+    buffer = b"999"
     while buffer:
         buffer = source.read(buffsize)
         compdata += buffer
     source.close()
     shape = []
     for x in np.arange(maxdim):
-        val = int(header[x*dimlen:(x+1)*dimlen].decode('ascii'))
-        if val>0:
+        val = int(header[x * dimlen : (x + 1) * dimlen].decode("ascii"))
+        if val > 0:
             shape.append(val)
-    dtype= header[maxdim*dimlen:maxdim*dimlen+dtypelen].decode('ascii').strip('0')
+    dtype = (
+        header[maxdim * dimlen : maxdim * dimlen + dtypelen].decode("ascii").strip("0")
+    )
     the_array = decompress_array(compdata, shape, dtype)
     return the_array
-

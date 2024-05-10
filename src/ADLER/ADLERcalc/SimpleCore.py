@@ -1,4 +1,3 @@
-
 #    This file is part of ADLER.
 #
 #    ADLER is free software: you can redistribute it and/or modify
@@ -13,7 +12,7 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-# 
+#
 # Copyright (C) Maciej Bartkowiak, 2019-2023
 
 __doc__ = """
@@ -38,13 +37,13 @@ from PyQt6.QtWidgets import QApplication
 
 
 from ADLER.ADLERcalc.RixsMeasurement import RixsMeasurement
-from ADLER.ADLERcalc.ioUtils import read_1D_curve_extended,\
-                              WriteEnergyProfile
+from ADLER.ADLERcalc.ioUtils import read_1D_curve_extended, WriteEnergyProfile
 from ADLER.ADLERcalc.imageUtils import elastic_line_anyx
 from ADLER.ADLERcalc.arrayUtils import merge2curves
 from ADLER.ADLERcalc.fitUtils import gauss_denum
 
 #### Object-Oriented part
+
 
 class SimpleCore(QObject):
     cleared = pyqtSignal()
@@ -56,8 +55,17 @@ class SimpleCore(QObject):
     finished_rixsmap = pyqtSignal()
     finished_merge = pyqtSignal()
     finished_filter = pyqtSignal()
-    def __init__(self, master, boxes, logger,  progress_bar = None,  table = None, max_threads = 1, 
-                                startpath = expanduser("~")):
+
+    def __init__(
+        self,
+        master,
+        boxes,
+        logger,
+        progress_bar=None,
+        table=None,
+        max_threads=1,
+        startpath=expanduser("~"),
+    ):
         if master is None:
             super().__init__()
         else:
@@ -81,7 +89,7 @@ class SimpleCore(QObject):
         self.energies = []
         self.prof_numbers = []
         self.mplot_curves = []
-        self.mplot_labels =[]
+        self.mplot_labels = []
         self.mplot_override = []
         self.mplot_fits = []
         self.mplot_fitparams = []
@@ -94,15 +102,28 @@ class SimpleCore(QObject):
         self.filter_curves = []
         self.filter_labels = []
         self.current_rixsmap = 0
-        self.rixsaxes = ["Photon energy (eV)", "Temperature (K)", "Q (1/A)", "2 theta (deg.)"]
+        self.rixsaxes = [
+            "Photon energy (eV)",
+            "Temperature (K)",
+            "Q (1/A)",
+            "2 theta (deg.)",
+        ]
         self.rixs_axis_label = self.rixsaxes[self.current_rixsmap]
         self.filter_override = ["Inverse units", "Fourier Transform"]
-        self.map2Dplotax = [(1, 2048,),  (1, 2048)]
+        self.map2Dplotax = [
+            (
+                1,
+                2048,
+            ),
+            (1, 2048),
+        ]
         self.prof_count = 0
         self.legpos = 0
         self.retvals = []
+
     def possible_rixsmap_axes(self):
         return self.rixsaxes
+
     def assign_boxes(self, boxes):
         self.boxes = boxes
         for db in boxes:
@@ -112,10 +133,12 @@ class SimpleCore(QObject):
                 self.pardict[nam] = values[nam]
             db.values_changed.connect(self.make_params_visible)
         self.make_params_visible()
+
     @pyqtSlot(int)
     def rixsmap_axis(self, newnum):
         self.current_rixsmap = newnum
         self.rixs_axis_label = self.rixsaxes[newnum]
+
     @pyqtSlot()
     def make_params_visible(self):
         for db in self.boxes:
@@ -128,22 +151,23 @@ class SimpleCore(QObject):
             val = self.pardict[k]
             if len(val) == 1:
                 val = val[0]
-            if 'cuts' in k:
+            if "cuts" in k:
                 self.cuts = val
-            elif 'eline' in k:
+            elif "eline" in k:
                 self.eline = val
-            elif 'bkg_perc' in k:
+            elif "bkg_perc" in k:
                 self.bkg_perc = val
-            elif 'offmax' in k:
+            elif "offmax" in k:
                 self.offmax = val
-            elif 'redfac' in k:
+            elif "redfac" in k:
                 self.redfac = val
-            elif 'legpos' in k:
+            elif "legpos" in k:
                 self.legpos = val
-            elif 'smear' in k:
+            elif "smear" in k:
                 self.smear = val
-            elif 'cutoff' in k:
+            elif "cutoff" in k:
                 self.cutoff = val
+
     def reduce_profiles(self):
         if len(self.profiles) == len(self.reduced_profiles):
             if self.redfac == self.lastreduction:
@@ -155,26 +179,33 @@ class SimpleCore(QObject):
         else:
             for p in self.profiles:
                 steps = len(p)
-                newsteps = int(round(steps/self.redfac))
+                newsteps = int(round(steps / self.redfac))
                 target = np.zeros([newsteps, 2])
                 target[:, 0] = np.linspace(p[:, 0].min(), p[:, 0].max(), newsteps)
-                newone = merge2curves(p,  target)
+                newone = merge2curves(p, target)
                 self.reduced_profiles.append(newone)
         self.lastreduction = self.redfac
         return True
+
     @pyqtSlot()
     def take_table_values(self):
         # self.table_obj.update_values()
         self.retvals = self.table_obj.return_values()
-    def logger(self,  message):
+
+    def logger(self, message):
         now = time.gmtime()
-        timestamp = ("ProfileCore "
-                     +"-".join([str(tx) for tx in [now.tm_mday, now.tm_mon, now.tm_year]])
-                     + ',' + ":".join([str(ty) for ty in [now.tm_hour, now.tm_min, now.tm_sec]]) + '| ')
+        timestamp = (
+            "ProfileCore "
+            + "-".join([str(tx) for tx in [now.tm_mday, now.tm_mon, now.tm_year]])
+            + ","
+            + ":".join([str(ty) for ty in [now.tm_hour, now.tm_min, now.tm_sec]])
+            + "| "
+        )
         self.logmessage.emit(timestamp + message)
+
     @pyqtSlot(object)
-    def load_profiles(self,  flist):
-        fnames, snames, profiles,  envals,  units, pardicts = [], [], [], [], [], []
+    def load_profiles(self, flist):
+        fnames, snames, profiles, envals, units, pardicts = [], [], [], [], [], []
         for fnum, fname in enumerate(flist):
             self.temp_path, short_name = os.path.split(fname)
             try:
@@ -182,7 +213,7 @@ class SimpleCore(QObject):
             except:
                 self.logger("Could not parse file:" + str(fname))
             else:
-                self.prof_numbers.append(self.prof_count+fnum)
+                self.prof_numbers.append(self.prof_count + fnum)
                 fnames.append(fname)
                 profiles.append(p)
                 envals.append(e[0])
@@ -198,6 +229,7 @@ class SimpleCore(QObject):
         self.loaded.emit()
         self.fileparams.emit([snames, profiles, envals, units, pardicts])
         return snames, profiles, envals, units, pardicts
+
     @pyqtSlot()
     def clear_profiles(self):
         self.fullnames = []
@@ -210,6 +242,7 @@ class SimpleCore(QObject):
         self.prof_numbers = []
         self.prof_count = 0
         self.cleared.emit()
+
     def autofit_many(self):
         self.fitsworked = False
         if len(self.retvals) < 1:
@@ -217,7 +250,17 @@ class SimpleCore(QObject):
             return None
         else:
             self.reduce_profiles()
-            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = [], [], [], [], [], [], [], [], []
+            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             for nr in range(len(self.retvals)):
                 nums.append(self.retvals[nr][0])
                 Ei.append(self.retvals[nr][1])
@@ -228,54 +271,60 @@ class SimpleCore(QObject):
                 temps.append(self.retvals[nr][6])
                 twothetas.append(self.retvals[nr][7])
                 qs.append(self.retvals[nr][8])
-            chan,  en,  entran = 0, 0, 0
+            chan, en, entran = 0, 0, 0
             for un in xunits:
                 if un == 0:
-                    chan+=1
+                    chan += 1
                 elif un == 1:
-                    entran+=1
+                    entran += 1
                 elif un == 2:
-                    en +=1
+                    en += 1
             iunits = np.array(xunits)
-            if entran >0:
+            if entran > 0:
                 self.logger("Plotting energy transfer. Other units will be discarded.")
-                crit = np.where(iunits ==1)
+                crit = np.where(iunits == 1)
                 unit = 1
                 fwhm_guess = 0.05
             elif en > 0:
                 self.logger("Plotting energy. Other units will be discarded.")
-                crit = np.where(iunits ==2)
+                crit = np.where(iunits == 2)
                 unit = 2
                 fwhm_guess = 0.05
             else:
-                self.logger("Plotting raw channels. This is most likely a debugging run.")
-                crit = np.where(iunits ==0)
+                self.logger(
+                    "Plotting raw channels. This is most likely a debugging run."
+                )
+                crit = np.where(iunits == 0)
                 unit = 0
                 fwhm_guess = 4.0
-            nums =np.array(nums)[crit]
-            xvals =np.array(Ei)[crit]
-            xmin =np.array(xmin)[crit]
-            xmax =np.array(xmax)[crit]
+            nums = np.array(nums)[crit]
+            xvals = np.array(Ei)[crit]
+            xmin = np.array(xmin)[crit]
+            xmax = np.array(xmax)[crit]
             curves = []
             bkgs = []
             labels = []
             for rn, num in enumerate(nums):
                 temp = self.reduced_profiles[num].copy()
-                bkg = temp[np.where(temp[:, 1] < np.percentile(temp[:,1], self.bkg_perc))]
+                bkg = temp[
+                    np.where(temp[:, 1] < np.percentile(temp[:, 1], self.bkg_perc))
+                ]
                 temp = temp[np.where(temp[:, 0] >= xmin[rn])]
                 temp = temp[np.where(temp[:, 0] <= xmax[rn])]
                 curves.append(temp)
                 bkgs.append(bkg)
                 labels.append(str(xvals[rn]) + " eV, " + names[rn])
                 # step = cur[np.where( cur[:,1] < np.percentile(cur[:,1], 60.0) )][:,1].std()
-            width,  widtherr = [], []
-            area,  areaerr = [], []
+            width, widtherr = [], []
+            area, areaerr = [], []
             centre, centreerr = [], []
             peakcurves = []
             for n in range(len(curves)):
                 temp = curves[n]
                 bkg = bkgs[n]
-                fit, peakshape,  chi2 = elastic_line_anyx(temp,  bkg,  init_fwhm = fwhm_guess)
+                fit, peakshape, chi2 = elastic_line_anyx(
+                    temp, bkg, init_fwhm=fwhm_guess
+                )
                 if fit is None:
                     width.append(-1.0)
                     widtherr.append(-1.0)
@@ -283,30 +332,45 @@ class SimpleCore(QObject):
                     areaerr.append(-1.0)
                     centre.append(0.0)
                     centreerr.append(-1.0)
-                    peakcurves.append(np.column_stack([np.arange(10),  np.zeros(10)]))
+                    peakcurves.append(np.column_stack([np.arange(10), np.zeros(10)]))
                 else:
-                    peak_area = fit[0][0]*abs(fit[0][1])/gauss_denum*(2*np.pi)**0.5
-                    peak_area_error = peak_area*((fit[1][0]/fit[0][0])**2 + (fit[1][1]/fit[0][1])**2)**0.5
-                    width.append(abs(round(fit[0][1],3)))
-                    widtherr.append(abs(round(fit[1][1],3)))
-                    centre.append(abs(round(fit[0][2],3)))
-                    centreerr.append(abs(round(fit[1][2],3)))
-                    area.append(round(peak_area,3))
-                    areaerr.append(abs(round(peak_area_error,3)))
+                    peak_area = (
+                        fit[0][0] * abs(fit[0][1]) / gauss_denum * (2 * np.pi) ** 0.5
+                    )
+                    peak_area_error = (
+                        peak_area
+                        * ((fit[1][0] / fit[0][0]) ** 2 + (fit[1][1] / fit[0][1]) ** 2)
+                        ** 0.5
+                    )
+                    width.append(abs(round(fit[0][1], 3)))
+                    widtherr.append(abs(round(fit[1][1], 3)))
+                    centre.append(abs(round(fit[0][2], 3)))
+                    centreerr.append(abs(round(fit[1][2], 3)))
+                    area.append(round(peak_area, 3))
+                    areaerr.append(abs(round(peak_area_error, 3)))
                     peakcurves.append(peakshape)
             self.mplot_curves = curves
             self.mplot_labels = labels
             self.mplot_fits = peakcurves
-            self.mplot_fitparams = [nums, width,  widtherr,  area,  areaerr, centre, centreerr]
-            if unit ==1:
+            self.mplot_fitparams = [
+                nums,
+                width,
+                widtherr,
+                area,
+                areaerr,
+                centre,
+                centreerr,
+            ]
+            if unit == 1:
                 self.mplot_override = ["Energy transfer [eV]", ""]
-            elif unit ==2:
+            elif unit == 2:
                 self.mplot_override = ["Energy [eV]", ""]
             else:
                 self.mplot_override = ["Channels", ""]
             self.fitsworked = True
             self.finished_fitting.emit()
             return "Done"
+
     def fit_many(self):
         self.fitsworked = False
         if len(self.retvals) < 1:
@@ -314,7 +378,17 @@ class SimpleCore(QObject):
             return None
         else:
             self.reduce_profiles()
-            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = [], [], [], [], [], [], [], [], []
+            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             for nr in range(len(self.retvals)):
                 nums.append(self.retvals[nr][0])
                 Ei.append(self.retvals[nr][1])
@@ -325,83 +399,104 @@ class SimpleCore(QObject):
                 temps.append(self.retvals[nr][6])
                 twothetas.append(self.retvals[nr][7])
                 qs.append(self.retvals[nr][8])
-            chan,  en,  entran = 0, 0, 0
+            chan, en, entran = 0, 0, 0
             for un in xunits:
                 if un == 0:
-                    chan+=1
+                    chan += 1
                 elif un == 1:
-                    entran+=1
+                    entran += 1
                 elif un == 2:
-                    en +=1
+                    en += 1
             iunits = np.array(xunits)
-            if entran >0:
+            if entran > 0:
                 self.logger("Plotting energy transfer. Other units will be discarded.")
-                crit = np.where(iunits ==1)
+                crit = np.where(iunits == 1)
                 unit = 1
                 fwhm_guess = 0.05
             elif en > 0:
                 self.logger("Plotting energy. Other units will be discarded.")
-                crit = np.where(iunits ==2)
+                crit = np.where(iunits == 2)
                 unit = 2
                 fwhm_guess = 0.05
             else:
-                self.logger("Plotting raw channels. This is most likely a debugging run.")
-                crit = np.where(iunits ==0)
+                self.logger(
+                    "Plotting raw channels. This is most likely a debugging run."
+                )
+                crit = np.where(iunits == 0)
                 unit = 0
                 fwhm_guess = 4.0
-            nums =np.array(nums)[crit]
-            xvals =np.array(Ei)[crit]
-            xmin =np.array(xmin)[crit]
-            xmax =np.array(xmax)[crit]
+            nums = np.array(nums)[crit]
+            xvals = np.array(Ei)[crit]
+            xmin = np.array(xmin)[crit]
+            xmax = np.array(xmax)[crit]
             curves = []
             bkgs = []
             labels = []
             for rn, num in enumerate(nums):
                 temp = self.reduced_profiles[num].copy()
-                bkg = temp[np.where(temp[:, 1] < np.percentile(temp[:,1], self.bkg_perc))]
+                bkg = temp[
+                    np.where(temp[:, 1] < np.percentile(temp[:, 1], self.bkg_perc))
+                ]
                 temp = temp[np.where(temp[:, 0] >= xmin[rn])]
                 temp = temp[np.where(temp[:, 0] <= xmax[rn])]
                 curves.append(temp)
                 bkgs.append(bkg)
                 labels.append(str(xvals[rn]) + " eV, " + names[rn])
                 # step = cur[np.where( cur[:,1] < np.percentile(cur[:,1], 60.0) )][:,1].std()
-            width,  widtherr = [], []
-            area,  areaerr = [], []
+            width, widtherr = [], []
+            area, areaerr = [], []
             centre, centreerr = [], []
             peakcurves = []
             for n in range(len(curves)):
                 temp = curves[n]
                 bkg = bkgs[n]
-                fit, peakshape, chi2 = elastic_line_anyx(temp,  bkg, olimits = self.eline,  init_fwhm = fwhm_guess)
+                fit, peakshape, chi2 = elastic_line_anyx(
+                    temp, bkg, olimits=self.eline, init_fwhm=fwhm_guess
+                )
                 if fit is None:
                     width.append(-1.0)
                     widtherr.append(-1.0)
                     area.append(0.0)
                     areaerr.append(-1.0)
-                    peakcurves.append(np.column_stack([np.arange(10),  np.zeros(10)]))
+                    peakcurves.append(np.column_stack([np.arange(10), np.zeros(10)]))
                 else:
-                    peak_area = fit[0][0]*abs(fit[0][1])/gauss_denum*(2*np.pi)**0.5
-                    peak_area_error = peak_area*((fit[1][0]/fit[0][0])**2 + (fit[1][1]/fit[0][1])**2)**0.5
-                    width.append(abs(round(fit[0][1],3)))
-                    widtherr.append(abs(round(fit[1][1],3)))
-                    centre.append(abs(round(fit[0][2],3)))
-                    centreerr.append(abs(round(fit[1][2],3)))
-                    area.append(round(peak_area,3))
-                    areaerr.append(abs(round(peak_area_error,3)))
+                    peak_area = (
+                        fit[0][0] * abs(fit[0][1]) / gauss_denum * (2 * np.pi) ** 0.5
+                    )
+                    peak_area_error = (
+                        peak_area
+                        * ((fit[1][0] / fit[0][0]) ** 2 + (fit[1][1] / fit[0][1]) ** 2)
+                        ** 0.5
+                    )
+                    width.append(abs(round(fit[0][1], 3)))
+                    widtherr.append(abs(round(fit[1][1], 3)))
+                    centre.append(abs(round(fit[0][2], 3)))
+                    centreerr.append(abs(round(fit[1][2], 3)))
+                    area.append(round(peak_area, 3))
+                    areaerr.append(abs(round(peak_area_error, 3)))
                     peakcurves.append(peakshape)
             self.mplot_curves = curves
             self.mplot_labels = labels
             self.mplot_fits = peakcurves
-            self.mplot_fitparams = [nums, width,  widtherr,  area,  areaerr, centre,  centreerr]
-            if unit ==1:
+            self.mplot_fitparams = [
+                nums,
+                width,
+                widtherr,
+                area,
+                areaerr,
+                centre,
+                centreerr,
+            ]
+            if unit == 1:
                 self.mplot_override = ["Energy transfer [eV]", ""]
-            elif unit ==2:
+            elif unit == 2:
                 self.mplot_override = ["Energy [eV]", ""]
             else:
                 self.mplot_override = ["Channels", ""]
             self.fitsworked = True
             self.finished_fitting.emit()
-            return "Done"    
+            return "Done"
+
     def manual_merge(self):
         self.mergeworked = False
         if len(self.retvals) < 1:
@@ -409,7 +504,17 @@ class SimpleCore(QObject):
             return None
         else:
             self.reduce_profiles()
-            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = [], [], [], [], [], [], [], [], []
+            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             for nr in range(len(self.retvals)):
                 nums.append(self.retvals[nr][0])
                 Ei.append(self.retvals[nr][1])
@@ -420,57 +525,60 @@ class SimpleCore(QObject):
                 temps.append(self.retvals[nr][6])
                 twothetas.append(self.retvals[nr][7])
                 qs.append(self.retvals[nr][8])
-            chan,  en,  entran = 0, 0, 0
+            chan, en, entran = 0, 0, 0
             for un in xunits:
                 if un == 0:
-                    chan+=1
+                    chan += 1
                 elif un == 1:
-                    entran+=1
+                    entran += 1
                 elif un == 2:
-                    en +=1
-            iunits = np.array(xunits)        
-            if entran >0:
+                    en += 1
+            iunits = np.array(xunits)
+            if entran > 0:
                 self.logger("Merging energy transfer. Other units will be discarded.")
-                crit = np.where(iunits ==1)
-                self.merged_units = ["Energy transfer [eV]",  "Intensity [arb. units]"]
+                crit = np.where(iunits == 1)
+                self.merged_units = ["Energy transfer [eV]", "Intensity [arb. units]"]
                 unit = 1
                 units = "Energy Transfer [eV]"
                 fwhm_guess = 0.05
             elif en > 0:
                 self.logger("Merging energy. This result is not likely to be useful.")
-                crit = np.where(iunits ==2)
-                self.merged_units = ["Energy [eV]",  "Intensity [arb. units]"]
+                crit = np.where(iunits == 2)
+                self.merged_units = ["Energy [eV]", "Intensity [arb. units]"]
                 unit = 2
                 units = "Energy [eV]"
                 fwhm_guess = 0.05
             else:
                 self.logger("Merging raw channels. This is probably a bad idea.")
-                crit = np.where(iunits ==0)
-                self.merged_units = ["Detector channels [pixel]",  "Intensity [arb. units]"]
+                crit = np.where(iunits == 0)
+                self.merged_units = [
+                    "Detector channels [pixel]",
+                    "Intensity [arb. units]",
+                ]
                 units = "Detector channels"
                 unit = 0
                 fwhm_guess = 4.0
-            nums =np.array(nums)[crit]
-            xvals =np.array(Ei)[crit]
-            xmin =np.array(xmin)[crit]
-            xmax =np.array(xmax)[crit]        
-            minx, maxx, stepx = 1e5,-1e5,-1.0    
+            nums = np.array(nums)[crit]
+            xvals = np.array(Ei)[crit]
+            xmin = np.array(xmin)[crit]
+            xmax = np.array(xmax)[crit]
+            minx, maxx, stepx = 1e5, -1e5, -1.0
             curves = []
             labels = []
             for rn, num in enumerate(nums):
                 dat = self.reduced_profiles[num].copy()
                 dat = dat[np.where(dat[:, 0] > xmin[rn])]
                 dat = dat[np.where(dat[:, 0] < xmax[rn])]
-                minx = min(minx, dat[:,0].min())
-                maxx = max(maxx, dat[:,0].max())
-                step = (dat[1:,0] - dat[:-1,0]).mean()
+                minx = min(minx, dat[:, 0].min())
+                maxx = max(maxx, dat[:, 0].max())
+                step = (dat[1:, 0] - dat[:-1, 0]).mean()
                 stepx = max(stepx, step)
                 curves.append(dat)
-            newx = np.arange(minx, maxx + 0.1*stepx, stepx)
-            target = np.zeros((len(newx),2))
-            target[:,0] = newx
+            newx = np.arange(minx, maxx + 0.1 * stepx, stepx)
+            target = np.zeros((len(newx), 2))
+            target[:, 0] = newx
             for n in range(len(curves)):
-                target = merge2curves(curves[n],target)
+                target = merge2curves(curves[n], target)
             self.merged_curve = target
             self.merged_units = units
             self.merged_energy = str(xvals.mean())
@@ -478,7 +586,7 @@ class SimpleCore(QObject):
             self.merged_2theta = str(np.array(twothetas).mean())
             self.merged_q = str(np.array(qs).mean())
             self.mergeworked = True
-            # now we try to add the fitting            
+            # now we try to add the fitting
             self.fullnames += ["No file"]
             self.shortnames += ["Merged data"]
             self.profiles += [target]
@@ -488,6 +596,7 @@ class SimpleCore(QObject):
             self.finished_merge.emit()
             # self.finished_fitting.emit()
             return target
+
     @pyqtSlot(str)
     def save_merged_profile(self, fname):
         if self.merged_curve is None:
@@ -498,28 +607,30 @@ class SimpleCore(QObject):
             return True
             # outname = os.path.join(self.temp_path, self.temp_name+"_HISTOGRAM.txt")
             # WriteEnergyProfile(outname, target, [])
+
     @pyqtSlot(str)
     def save_ticked_profiles(self, fpath):
         self.reduce_profiles()
-        nums, labels,  curves = [], [], []
+        nums, labels, curves = [], [], []
         for nr in range(len(self.retvals)):
             nums.append(self.retvals[nr][0])
         for rn, num in enumerate(nums):
-            curves.append(self.reduced_profiles[num].copy() )
+            curves.append(self.reduced_profiles[num].copy())
             labels.append(self.shortnames[rn])
-        if len(curves) ==0:
+        if len(curves) == 0:
             self.logger("There are no curves to be saved.")
             return None
         else:
             for num in range(len(curves)):
-                if labels[num][-4:] == '.txt':
+                if labels[num][-4:] == ".txt":
                     target = fpath + "/" + labels[num]
                 else:
-                    target = fpath + "/" + labels[num] + '.txt'
+                    target = fpath + "/" + labels[num] + ".txt"
                 WriteEnergyProfile(target, curves[num], [])
             return True
             # outname = os.path.join(self.temp_path, self.temp_name+"_HISTOGRAM.txt")
             # WriteEnergyProfile(outname, target, [])
+
     def fft_curves(self):
         self.overplotworked = False
         if len(self.retvals) < 1:
@@ -527,7 +638,17 @@ class SimpleCore(QObject):
             return None
         else:
             self.reduce_profiles()
-            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = [], [], [], [], [], [], [], [], []
+            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             for nr in range(len(self.retvals)):
                 nums.append(self.retvals[nr][0])
                 Ei.append(self.retvals[nr][1])
@@ -538,10 +659,10 @@ class SimpleCore(QObject):
                 temps.append(self.retvals[nr][6])
                 twothetas.append(self.retvals[nr][7])
                 qs.append(self.retvals[nr][8])
-            nums =np.array(nums)
-            xvals =np.array(Ei)
-            xmin =np.array(xmin)
-            xmax =np.array(xmax)
+            nums = np.array(nums)
+            xvals = np.array(Ei)
+            xmin = np.array(xmin)
+            xmax = np.array(xmax)
             curves = []
             labels = []
             for rn, num in enumerate(nums):
@@ -552,7 +673,7 @@ class SimpleCore(QObject):
                 labels.append(str(xvals[rn]) + " eV, " + names[rn])
                 # step = cur[np.where( cur[:,1] < np.percentile(cur[:,1], 60.0) )][:,1].std()
             for n in range(len(curves)):
-                xaxis = curves[n][:,0]
+                xaxis = curves[n][:, 0]
                 xstep = (xaxis[1:] - xaxis[:-1]).mean()
                 # new_x = fftfreq(len(xaxis), xstep)
                 new_y = rfft(curves[n][:, 1])
@@ -567,6 +688,7 @@ class SimpleCore(QObject):
             self.overplotworked = True
             self.finished_overplot.emit()
             return "Done"
+
     def fft_filter(self):
         self.filter_curves = []
         self.filter_labels = []
@@ -578,7 +700,17 @@ class SimpleCore(QObject):
             return None
         else:
             self.reduce_profiles()
-            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = [], [], [], [], [], [], [], [], []
+            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             for nr in range(len(self.retvals)):
                 nums.append(self.retvals[nr][0])
                 Ei.append(self.retvals[nr][1])
@@ -589,10 +721,10 @@ class SimpleCore(QObject):
                 temps.append(self.retvals[nr][6])
                 twothetas.append(self.retvals[nr][7])
                 qs.append(self.retvals[nr][8])
-            nums =np.array(nums)
-            xvals =np.array(Ei)
-            xmin =np.array(xmin)
-            xmax =np.array(xmax)
+            nums = np.array(nums)
+            xvals = np.array(Ei)
+            xmin = np.array(xmin)
+            xmax = np.array(xmax)
             curves = []
             labels = []
             for rn, num in enumerate(nums):
@@ -603,15 +735,15 @@ class SimpleCore(QObject):
                 labels.append(names[rn])
                 # step = cur[np.where( cur[:,1] < np.percentile(cur[:,1], 60.0) )][:,1].std()
             for n in range(len(curves)):
-                xaxis = curves[n][:,0]
+                xaxis = curves[n][:, 0]
                 xstep = (xaxis[1:] - xaxis[:-1]).mean()
                 new_x = fftfreq(len(xaxis), xstep)
                 new_y = rfft(curves[n][:, 1])
-                new_y[-self.cutoff:] = 0.0
+                new_y[-self.cutoff :] = 0.0
                 result = irfft(new_y)
                 # norm = curves[n][:,1].sum()
                 curves[n] = np.column_stack([xaxis, result])
-                labels[n] = 'Filtered_' + labels[n]
+                labels[n] = "Filtered_" + labels[n]
                 # curves[n] = curves[n][np.where(curves[n][:,1] > 0.0)]
                 # curves[n][:,1] *= 100.0
             self.filter_curves = curves
@@ -630,7 +762,7 @@ class SimpleCore(QObject):
                 else:
                     self.filter_units.append("???")
             self.filter_energies = Ei
-            for n,  lab in enumerate(self.filter_labels):
+            for n, lab in enumerate(self.filter_labels):
                 self.fullnames += ["No file"]
                 self.shortnames += [lab]
                 self.profiles += [self.filter_curves[n]]
@@ -643,6 +775,7 @@ class SimpleCore(QObject):
             self.overplotworked = True
             self.finished_filter.emit()
             return "Done"
+
     def multiplot(self):
         self.overplotworked = False
         if len(self.retvals) < 1:
@@ -650,7 +783,17 @@ class SimpleCore(QObject):
             return None
         else:
             self.reduce_profiles()
-            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = [], [], [], [], [], [], [], [], []
+            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             for nr in range(len(self.retvals)):
                 nums.append(self.retvals[nr][0])
                 Ei.append(self.retvals[nr][1])
@@ -661,31 +804,33 @@ class SimpleCore(QObject):
                 temps.append(self.retvals[nr][6])
                 twothetas.append(self.retvals[nr][7])
                 qs.append(self.retvals[nr][8])
-            chan,  en,  entran = 0, 0, 0
+            chan, en, entran = 0, 0, 0
             for un in xunits:
                 if un == 0:
-                    chan+=1
+                    chan += 1
                 elif un == 1:
-                    entran+=1
+                    entran += 1
                 elif un == 2:
-                    en +=1
+                    en += 1
             iunits = np.array(xunits)
-            if entran >0:
+            if entran > 0:
                 self.logger("Plotting energy transfer. Other units will be discarded.")
-                crit = np.where(iunits ==1)
+                crit = np.where(iunits == 1)
                 unit = 1
             elif en > 0:
                 self.logger("Plotting energy. Other units will be discarded.")
-                crit = np.where(iunits ==2)
+                crit = np.where(iunits == 2)
                 unit = 2
             else:
-                self.logger("Plotting raw channels. This is most likely a debugging run.")
-                crit = np.where(iunits ==0)
+                self.logger(
+                    "Plotting raw channels. This is most likely a debugging run."
+                )
+                crit = np.where(iunits == 0)
                 unit = 0
-            nums =np.array(nums)[crit]
-            xvals =np.array(Ei)[crit]
-            xmin =np.array(xmin)[crit]
-            xmax =np.array(xmax)[crit]
+            nums = np.array(nums)[crit]
+            xvals = np.array(Ei)[crit]
+            xmin = np.array(xmin)[crit]
+            xmax = np.array(xmax)[crit]
             curves = []
             labels = []
             for rn, num in enumerate(nums):
@@ -696,27 +841,28 @@ class SimpleCore(QObject):
                 labels.append(str(xvals[rn]) + " eV, " + names[rn])
                 # step = cur[np.where( cur[:,1] < np.percentile(cur[:,1], 60.0) )][:,1].std()
             for n in range(len(curves)):
-                xaxis = curves[n][:,0]
+                xaxis = curves[n][:, 0]
                 xstep = xaxis[1:] - xaxis[:-1]
                 xstep = np.concatenate([xstep[:1], xstep])
-                norm = (np.abs(curves[n][:,1]) * xstep).sum()
+                norm = (np.abs(curves[n][:, 1]) * xstep).sum()
                 # norm = curves[n][:,1].sum()
-                curves[n][:,1] /= norm
-                shift = np.percentile(curves[n][:,1], self.bkg_perc) - 0.01
-                curves[n][:,1] -= shift
+                curves[n][:, 1] /= norm
+                shift = np.percentile(curves[n][:, 1], self.bkg_perc) - 0.01
+                curves[n][:, 1] -= shift
                 # curves[n] = curves[n][np.where(curves[n][:,1] > 0.0)]
                 # curves[n][:,1] *= 100.0
             self.mplot_curves = curves
             self.mplot_labels = labels
-            if unit ==1:
+            if unit == 1:
                 self.mplot_override = ["Energy transfer [eV]", ""]
-            elif unit ==2:
+            elif unit == 2:
                 self.mplot_override = ["Energy [eV]", ""]
             else:
                 self.mplot_override = ["Channels", ""]
             self.overplotworked = True
             self.finished_overplot.emit()
             return "Done"
+
     def rixsmap(self):
         self.rixs_worked = False
         if len(self.retvals) <= 1:
@@ -724,7 +870,17 @@ class SimpleCore(QObject):
             return None
         else:
             self.reduce_profiles()
-            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = [], [], [], [], [], [], [], [], []
+            nums, Ei, xmin, xmax, xunits, names, temps, twothetas, qs = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             for nr in range(len(self.retvals)):
                 nums.append(self.retvals[nr][0])
                 Ei.append(self.retvals[nr][1])
@@ -740,35 +896,37 @@ class SimpleCore(QObject):
                     counter += 1
             if not (counter > 0):
                 return None
-            chan,  en,  entran = 0, 0, 0
+            chan, en, entran = 0, 0, 0
             for un in xunits:
                 if un == 0:
-                    chan+=1
+                    chan += 1
                 elif un == 1:
-                    entran+=1
+                    entran += 1
                 elif un == 2:
-                    en +=1
+                    en += 1
             iunits = np.array(xunits)
-            if entran >0:
+            if entran > 0:
                 self.logger("Plotting energy transfer. Other units will be discarded.")
-                crit = np.where(iunits ==1)
+                crit = np.where(iunits == 1)
             elif en > 0:
                 self.logger("Plotting energy. Other units will be discarded.")
-                crit = np.where(iunits ==2)
+                crit = np.where(iunits == 2)
             else:
-                self.logger("Plotting raw channels. This is most likely a debugging run.")
-                crit = np.where(iunits ==0)
-            nums =np.array(nums)[crit]
+                self.logger(
+                    "Plotting raw channels. This is most likely a debugging run."
+                )
+                crit = np.where(iunits == 0)
+            nums = np.array(nums)[crit]
             if self.current_rixsmap == 0:
-                xvals =np.array(Ei)[crit]
+                xvals = np.array(Ei)[crit]
             elif self.current_rixsmap == 1:
-                xvals =np.array(temps)[crit]
+                xvals = np.array(temps)[crit]
             elif self.current_rixsmap == 2:
-                xvals =np.array(twothetas)[crit]
+                xvals = np.array(twothetas)[crit]
             elif self.current_rixsmap == 3:
-                xvals =np.array(qs)[crit]
-            xmin =np.array(xmin)[crit]
-            xmax =np.array(xmax)[crit]
+                xvals = np.array(qs)[crit]
+            xmin = np.array(xmin)[crit]
+            xmax = np.array(xmax)[crit]
             ocurves, curves = [], []
             step = 0.0
             ymin, ymax, ystep = 1e5, -1e5, 100.0
@@ -778,18 +936,18 @@ class SimpleCore(QObject):
                 temp = temp[np.where(temp[:, 0] < xmax[rn])]
                 ocurves.append(temp)
             for n in range(len(ocurves)):
-                cxaxis = ocurves[n][:,0]
+                cxaxis = ocurves[n][:, 0]
                 cxstep = cxaxis[1:] - cxaxis[:-1]
                 cxstep = np.concatenate([cxstep[:1], cxstep])
                 ymin = min(ymin, cxaxis.min())
                 ymax = max(ymax, cxaxis.max())
                 ystep = min(ystep, cxstep.max())
-                norm = (ocurves[n][:,1] * cxstep).sum()
-                ocurves[n][:,1] /= norm
-                shift = np.percentile(ocurves[n][:,1], 75.0) - 0.01
-                ocurves[n][:,1] -= shift
-                ocurves[n] = ocurves[n][np.where(ocurves[n][:,1] > 0.0)]
-                ocurves[n][:,1] *= 100.0
+                norm = (ocurves[n][:, 1] * cxstep).sum()
+                ocurves[n][:, 1] /= norm
+                shift = np.percentile(ocurves[n][:, 1], 75.0) - 0.01
+                ocurves[n][:, 1] -= shift
+                ocurves[n] = ocurves[n][np.where(ocurves[n][:, 1] > 0.0)]
+                ocurves[n][:, 1] *= 100.0
             sequence = np.argsort(xvals)
             # print("RIXSMAP energies: ", xvals)
             # print("RIXSMAP sequence: ", sequence)
@@ -803,28 +961,32 @@ class SimpleCore(QObject):
                     curves.append(ocurves[se])
             # curves = curves[crit]
             # now we need to define a grid for the map
-            yaxis = np.arange(ymin, ymax+0.1*ystep, ystep)
+            yaxis = np.arange(ymin, ymax + 0.1 * ystep, ystep)
             npixy = len(yaxis)
             xmin = xvals.min()
             xmax = xvals.max()
             xstep = max((xvals[1:] - xvals[:-1]).min(), 0.05)
-            xaxis = np.arange(xmin - xstep, xmax + xstep*1.01, xstep/5.0)
+            xaxis = np.arange(xmin - xstep, xmax + xstep * 1.01, xstep / 5.0)
             xmask = np.zeros(len(xaxis))
             npixx = len(xaxis)
             # define the 2D arrays as needed
-            map_array = np.zeros((npixy,npixx)).astype(np.float64)
+            map_array = np.zeros((npixy, npixx)).astype(np.float64)
             # assign correct values
             # mcurves = []
             for n in range(len(curves)):
                 xcrit = np.abs(xaxis - xvals[n])
-                pos, = np.where(xcrit == xcrit.min())
-                target = np.zeros((npixy,2))
-                target[:,0] = yaxis.copy()
-                print("RIXSMAP curve min/max:",curves[n][:,1].min(),curves[n][:,1].max())
-                yvals = merge2curves(curves[n], target)[:,1]
+                (pos,) = np.where(xcrit == xcrit.min())
+                target = np.zeros((npixy, 2))
+                target[:, 0] = yaxis.copy()
+                print(
+                    "RIXSMAP curve min/max:",
+                    curves[n][:, 1].min(),
+                    curves[n][:, 1].max(),
+                )
+                yvals = merge2curves(curves[n], target)[:, 1]
                 # mcurves.append(merge2curves(curves[n], target))
-                map_array[:,pos] = yvals.reshape(map_array[:,pos].shape)
-                print("RIXSMAP pos, posshape: ", pos, map_array[:,pos].shape)
+                map_array[:, pos] = yvals.reshape(map_array[:, pos].shape)
+                print("RIXSMAP pos, posshape: ", pos, map_array[:, pos].shape)
                 # map_array[:len(curves[n]),pos] = curves[n][:,1].reshape(map_array[:len(curves[n]),pos].shape)
                 xmask[pos] = 1
             # apply smearing
@@ -834,45 +996,45 @@ class SimpleCore(QObject):
             weight_array = np.zeros(len(xaxis))
             # smearwidth = 2.0 # meV
             smearwidth = self.smear
-            gridstep = xstep/5.0
-            width = int(math.ceil(smearwidth/gridstep))
+            gridstep = xstep / 5.0
+            width = int(math.ceil(smearwidth / gridstep))
             # print("RIXSMAP step, gridstep, width", xstep, gridstep, width)
             for n in range(len(xaxis)):
                 if xmask[n]:
                     w_axis = np.zeros(len(xaxis))
                     w_axis[n] = 1.0
-                    neglim, poslim = 0,0
-                    for s in range(1,width):
-                        if n-s >= 0:
+                    neglim, poslim = 0, 0
+                    for s in range(1, width):
+                        if n - s >= 0:
                             neglim = s
-                            if xmask[n-s]:
+                            if xmask[n - s]:
                                 break
-                    for s in range(1,neglim):
-                        if n-s >= 0:
-                            w_axis[n-s] = 1.0 - s/float(neglim)
-                    for s in range(1,width):
-                        if n+s < len(xmask):
+                    for s in range(1, neglim):
+                        if n - s >= 0:
+                            w_axis[n - s] = 1.0 - s / float(neglim)
+                    for s in range(1, width):
+                        if n + s < len(xmask):
                             poslim = s
-                            if xmask[n+s]:
+                            if xmask[n + s]:
                                 break
-                    for s in range(1,poslim):
-                        if n+s < len(xmask):
-                            w_axis[n+s] = 1.0 - s/float(poslim)
+                    for s in range(1, poslim):
+                        if n + s < len(xmask):
+                            w_axis[n + s] = 1.0 - s / float(poslim)
                     for s in range(len(xaxis)):
                         if w_axis[s] > 0.0:
                             if xmask[s] > 0.0:
-                                virt_array[:,s] = map_array[:,s].copy()
+                                virt_array[:, s] = map_array[:, s].copy()
                                 weight_array[s] = 1.0
                             else:
-                                virt_array[:,s] += w_axis[s]*(map_array[:,n].copy())
+                                virt_array[:, s] += w_axis[s] * (map_array[:, n].copy())
                                 weight_array[s] += w_axis[s]
             print("RIXSMAP weigth array: ", weight_array)
             for n in range(len(xaxis)):
                 if weight_array[n] > 0.0:
-                    virt_array[:,n] /= weight_array[n]
+                    virt_array[:, n] /= weight_array[n]
             # plot!
             self.map2D = [virt_array, map_array]
-            self.map2Dplotax = [(ymin,ymax), (xmin, xmax)]
+            self.map2Dplotax = [(ymin, ymax), (xmin, xmax)]
             self.rixs_worked = True
             self.finished_rixsmap.emit()
             return "Done"
@@ -888,8 +1050,17 @@ class NewSimpleCore(QStandardItemModel):
     finished_rixsmap = pyqtSignal()
     finished_merge = pyqtSignal()
     finished_filter = pyqtSignal()
-    def __init__(self, master, boxes, logger,  progress_bar = None,  table_headers = None, max_threads = 1, 
-                                startpath = expanduser("~")):
+
+    def __init__(
+        self,
+        master,
+        boxes,
+        logger,
+        progress_bar=None,
+        table_headers=None,
+        max_threads=1,
+        startpath=expanduser("~"),
+    ):
         if master is None:
             super().__init__()
         else:
@@ -914,7 +1085,7 @@ class NewSimpleCore(QStandardItemModel):
         self.energies = []
         self.prof_numbers = []
         self.mplot_curves = []
-        self.mplot_labels =[]
+        self.mplot_labels = []
         self.mplot_override = ["Energy transfer [eV]", ""]
         self.mplot_fits = []
         self.mplot_fitparams = []
@@ -930,32 +1101,64 @@ class NewSimpleCore(QStandardItemModel):
         self.arbitrary_range = np.array([-8192.0, 8192.0])
         self.current_rixsmap = 0
         self.fname_suffix = "eV"
-        self.rixsaxes = ["Photon energy (eV)", "Temperature (K)", "Q (1/A)", "2 theta (deg.)"]
+        self.rixsaxes = [
+            "Photon energy (eV)",
+            "Temperature (K)",
+            "Q (1/A)",
+            "2 theta (deg.)",
+        ]
         self.rixs_axis_label = self.rixsaxes[self.current_rixsmap]
         self.current_rixsmap_ax2 = 0
-        self.rixsaxes2 = ["Absolute energy (eV)", "Energy transfer (eV)", "Detector channels"]
+        self.rixsaxes2 = [
+            "Absolute energy (eV)",
+            "Energy transfer (eV)",
+            "Detector channels",
+        ]
         self.rixs_axis2_label = self.rixsaxes2[self.current_rixsmap_ax2]
         self.current_1dplot_axis = 1
-        self.plotaxes = ["Absolute energy (eV)", "Energy transfer (eV)", "Detector channels"]
-        self.normoptions = ["Integrated ring current",  "Total counts", "Time", "Number of scans",
-                                    "Peak area", "Peak position", "Peak width", "Arbitrary range"]
+        self.plotaxes = [
+            "Absolute energy (eV)",
+            "Energy transfer (eV)",
+            "Detector channels",
+        ]
+        self.normoptions = [
+            "Integrated ring current",
+            "Total counts",
+            "Time",
+            "Number of scans",
+            "Peak area",
+            "Peak position",
+            "Peak width",
+            "Arbitrary range",
+        ]
         self.normflags = [False] * len(self.normoptions)
         self.plot_axis_label = self.plotaxes[self.current_1dplot_axis]
         self.filter_override = ["Inverse units", "Fourier Transform"]
-        self.map2Dplotax = [(1, 2048,),  (1, 2048)]
+        self.map2Dplotax = [
+            (
+                1,
+                2048,
+            ),
+            (1, 2048),
+        ]
         self.prof_count = 0
         self.legpos = 0
         self.cnames = table_headers
         self.col_order = table_headers
         self.setHorizontalHeaderLabels(table_headers)
+
     def possible_normalisation_choices(self):
         return self.normoptions
+
     def possible_rixsmap_axes(self):
         return self.rixsaxes
+
     def possible_rixsmap_axes2(self):
         return self.rixsaxes2
+
     def possible_plot_axes(self):
         return self.plotaxes
+
     def assign_boxes(self, boxes):
         self.boxes = boxes
         for db in boxes:
@@ -965,17 +1168,21 @@ class NewSimpleCore(QStandardItemModel):
                 self.pardict[nam] = values[nam]
             db.values_changed.connect(self.make_params_visible)
         self.make_params_visible()
+
     @pyqtSlot(object)
     def normalisation_flags(self, flaglist):
         self.normflags = flaglist
+
     @pyqtSlot(int)
     def rixsmap_axis(self, newnum):
         self.current_rixsmap = newnum
         self.rixs_axis_label = self.rixsaxes[newnum]
+
     @pyqtSlot(int)
     def rixsmap_axis_Y(self, newnum):
         self.current_rixsmap_ax2 = newnum
         self.rixs_axis2_label = self.rixsaxes[newnum]
+
     @pyqtSlot(int)
     def plot_axis(self, newnum):
         self.current_1dplot_axis = newnum
@@ -984,7 +1191,7 @@ class NewSimpleCore(QStandardItemModel):
             self.mplot_override = ["Energy transfer [eV]", ""]
             self.fwhm_guess = 0.05
             self.fname_suffix = "eV"
-        elif newnum ==0:
+        elif newnum == 0:
             self.mplot_override = ["Energy [eV]", ""]
             self.fwhm_guess = 0.05
             self.fname_suffix = "absEnergy"
@@ -992,6 +1199,7 @@ class NewSimpleCore(QStandardItemModel):
             self.mplot_override = ["Channels", ""]
             self.fwhm_guess = 4.0
             self.fname_suffix = "channels"
+
     @pyqtSlot()
     def make_params_visible(self):
         for db in self.boxes:
@@ -1004,24 +1212,25 @@ class NewSimpleCore(QStandardItemModel):
             val = self.pardict[k]
             if len(val) == 1:
                 val = val[0]
-            if 'cuts' in k:
+            if "cuts" in k:
                 self.cuts = val
-            elif 'eline' in k:
+            elif "eline" in k:
                 self.eline = val
-            elif 'bkg_perc' in k:
+            elif "bkg_perc" in k:
                 self.bkg_perc = val
-            elif 'offmax' in k:
+            elif "offmax" in k:
                 self.offmax = val
-            elif 'redfac' in k:
+            elif "redfac" in k:
                 self.redfac = val
-            elif 'legpos' in k:
+            elif "legpos" in k:
                 self.legpos = val
-            elif 'smear' in k:
+            elif "smear" in k:
                 self.smear = val
-            elif 'cutoff' in k:
+            elif "cutoff" in k:
                 self.cutoff = val
         self.arbitrary_range[0:2] = [self.eline[0], self.eline[1]]
-    def reduce_profiles(self,  for_rixs=False):
+
+    def reduce_profiles(self, for_rixs=False):
         self.reduced_profiles = []
         self.matching_numbers = []
         temp = []
@@ -1032,15 +1241,15 @@ class NewSimpleCore(QStandardItemModel):
         if for_rixs:
             dummy_x = np.linspace(-50, 50, 256)
             dummy_y = np.zeros(dummy_x.shape)
-            if self.current_rixsmap_ax2 ==0:
+            if self.current_rixsmap_ax2 == 0:
                 unit = 0
                 for p in self.profiles:
                     temp.append(p.profile_absEnergy.copy())
-            if self.current_rixsmap_ax2 ==1:
+            if self.current_rixsmap_ax2 == 1:
                 unit = 1
                 for p in self.profiles:
                     temp.append(p.profile_eV.copy())
-            if self.current_rixsmap_ax2 ==2:
+            if self.current_rixsmap_ax2 == 2:
                 unit = 2
                 for p in self.profiles:
                     temp.append(p.profile_channels.copy())
@@ -1066,46 +1275,53 @@ class NewSimpleCore(QStandardItemModel):
             p.set_integration_range(self.arbitrary_range, unit)
             norms.append(p.norm_number(self.normflags, unit))
         print(flags)
-        for nn,  p in enumerate(temp):
+        for nn, p in enumerate(temp):
             steps = len(p)
             norm = norms[nn]
             if flags[nn]:
                 self.matching_numbers.append(nn)
-                if steps <1:
-                    print("Slot ",nn,": Profile missing, skipping.")
+                if steps < 1:
+                    print("Slot ", nn, ": Profile missing, skipping.")
                     self.reduced_profiles.append(np.column_stack([dummy_x, dummy_y]))
                 else:
                     tprof = p.copy()
                     tprof[:, 1] /= norm
-                    newsteps = int(round(steps/self.redfac))
+                    newsteps = int(round(steps / self.redfac))
                     target = np.zeros([newsteps, 2])
                     target[:, 0] = np.linspace(p[:, 0].min(), p[:, 0].max(), newsteps)
-                    newone = merge2curves(p,  target)
+                    newone = merge2curves(p, target)
                     self.reduced_profiles.append(newone)
         self.lastreduction = self.redfac
         return True
+
     # @pyqtSlot()
     # def take_table_values(self):
-        # self.table_obj.update_values()
+    # self.table_obj.update_values()
     #   self.retvals = self.table_obj.return_values()
-    def logger(self,  message):
+    def logger(self, message):
         now = time.gmtime()
-        timestamp = ("ProfileCore "
-                     +"-".join([str(tx) for tx in [now.tm_mday, now.tm_mon, now.tm_year]])
-                     + ',' + ":".join([str(ty) for ty in [now.tm_hour, now.tm_min, now.tm_sec]]) + '| ')
+        timestamp = (
+            "ProfileCore "
+            + "-".join([str(tx) for tx in [now.tm_mday, now.tm_mon, now.tm_year]])
+            + ","
+            + ":".join([str(ty) for ty in [now.tm_hour, now.tm_min, now.tm_sec]])
+            + "| "
+        )
         self.logmessage.emit(timestamp + message)
+
     @pyqtSlot(object)
-    def load_profiles(self,  flist):
+    def load_profiles(self, flist):
         for fnum, fname in enumerate(flist):
             self.temp_path, short_name = os.path.split(fname)
             temp = RixsMeasurement()
-            if '.yaml' in short_name[-5:]:
+            if ".yaml" in short_name[-5:]:
                 temp.read_yaml(fname)
-            elif '.txt' in short_name[-4:]:
+            elif ".txt" in short_name[-4:]:
                 temp.read_extended_ADLER(fname)
             self.profiles.append(temp)
             self.add_row(temp)
         self.loaded.emit()
+
     @pyqtSlot()
     def clear_profiles(self):
         self.fullnames = []
@@ -1121,6 +1337,7 @@ class NewSimpleCore(QStandardItemModel):
         self.setHorizontalHeaderLabels(self.cnames)
         self.col_order = self.cnames
         self.cleared.emit()
+
     def autofit_many(self):
         self.fitsworked = False
         curves = []
@@ -1134,23 +1351,25 @@ class NewSimpleCore(QStandardItemModel):
             nums.append(nr)
             Ei.append(rmeas.energy)
             names.append(rmeas.shortsource)
-            temps.append(pdict['temperature'])
-            twothetas.append(pdict['arm_theta'])
-            qs.append(pdict['Q'])
+            temps.append(pdict["temperature"])
+            twothetas.append(pdict["arm_theta"])
+            qs.append(pdict["Q"])
         for rn, num in enumerate(nums):
             temp = self.reduced_profiles[rn].copy()
-            bkg = temp[np.where(temp[:, 1] < np.percentile(temp[:,1], self.bkg_perc))]
+            bkg = temp[np.where(temp[:, 1] < np.percentile(temp[:, 1], self.bkg_perc))]
             curves.append(temp)
             bkgs.append(bkg)
             labels.append(str(Ei[rn]) + " eV, " + names[rn])
-        width,  widtherr = [], []
-        area,  areaerr = [], []
+        width, widtherr = [], []
+        area, areaerr = [], []
         centre, centreerr = [], []
         peakcurves = []
         for n in range(len(curves)):
             temp = curves[n]
             bkg = bkgs[n]
-            fit, peakshape,  chi2 = elastic_line_anyx(temp,  bkg,  init_fwhm = self.fwhm_guess)
+            fit, peakshape, chi2 = elastic_line_anyx(
+                temp, bkg, init_fwhm=self.fwhm_guess
+            )
             row = nums[n]
             if fit is None:
                 width.append(-1.0)
@@ -1159,18 +1378,33 @@ class NewSimpleCore(QStandardItemModel):
                 areaerr.append(-1.0)
                 centre.append(0.0)
                 centreerr.append(-1.0)
-                peakcurves.append(np.column_stack([np.arange(10),  np.zeros(10)]))
+                peakcurves.append(np.column_stack([np.arange(10), np.zeros(10)]))
             else:
-                peak_area = fit[0][0]*abs(fit[0][1])/gauss_denum*(2*np.pi)**0.5
-                peak_area_error = peak_area*((fit[1][0]/fit[0][0])**2 + (fit[1][1]/fit[0][1])**2)**0.5
-                width.append(abs(round(fit[0][1],3)))
-                widtherr.append(abs(round(fit[1][1],3)))
-                centre.append(abs(round(fit[0][2],3)))
-                centreerr.append(abs(round(fit[1][2],3)))
-                area.append(round(peak_area,3))
-                areaerr.append(abs(round(peak_area_error,3)))
+                peak_area = (
+                    fit[0][0] * abs(fit[0][1]) / gauss_denum * (2 * np.pi) ** 0.5
+                )
+                peak_area_error = (
+                    peak_area
+                    * ((fit[1][0] / fit[0][0]) ** 2 + (fit[1][1] / fit[0][1]) ** 2)
+                    ** 0.5
+                )
+                width.append(abs(round(fit[0][1], 3)))
+                widtherr.append(abs(round(fit[1][1], 3)))
+                centre.append(abs(round(fit[0][2], 3)))
+                centreerr.append(abs(round(fit[1][2], 3)))
+                area.append(round(peak_area, 3))
+                areaerr.append(abs(round(peak_area_error, 3)))
                 peakcurves.append(peakshape)
-            for nn, d in enumerate([width[-1], widtherr[-1], area[-1], areaerr[-1], centre[-1], centreerr[-1]]):
+            for nn, d in enumerate(
+                [
+                    width[-1],
+                    widtherr[-1],
+                    area[-1],
+                    areaerr[-1],
+                    centre[-1],
+                    centreerr[-1],
+                ]
+            ):
                 column = nn + 6
                 intermediate = str(d).strip("()[]'")
                 try:
@@ -1183,10 +1417,11 @@ class NewSimpleCore(QStandardItemModel):
         self.mplot_curves = curves
         self.mplot_labels = labels
         self.mplot_fits = peakcurves
-        self.mplot_fitparams = [nums, width,  widtherr,  area,  areaerr, centre, centreerr]
+        self.mplot_fitparams = [nums, width, widtherr, area, areaerr, centre, centreerr]
         self.fitsworked = True
         self.finished_fitting.emit()
         return "Done"
+
     def fit_many(self):
         self.fitsworked = False
         curves = []
@@ -1200,23 +1435,25 @@ class NewSimpleCore(QStandardItemModel):
             nums.append(nr)
             Ei.append(rmeas.energy)
             names.append(rmeas.shortsource)
-            temps.append(pdict['temperature'])
-            twothetas.append(pdict['arm_theta'])
-            qs.append(pdict['Q'])
+            temps.append(pdict["temperature"])
+            twothetas.append(pdict["arm_theta"])
+            qs.append(pdict["Q"])
         for rn, num in enumerate(nums):
             temp = self.reduced_profiles[rn].copy()
-            bkg = temp[np.where(temp[:, 1] < np.percentile(temp[:,1], self.bkg_perc))]
+            bkg = temp[np.where(temp[:, 1] < np.percentile(temp[:, 1], self.bkg_perc))]
             curves.append(temp)
             bkgs.append(bkg)
             labels.append(str(Ei[rn]) + " eV, " + names[rn])
-        width,  widtherr = [], []
-        area,  areaerr = [], []
+        width, widtherr = [], []
+        area, areaerr = [], []
         centre, centreerr = [], []
         peakcurves = []
         for n in range(len(curves)):
             temp = curves[n]
             bkg = bkgs[n]
-            fit, peakshape,  chi2 = elastic_line_anyx(temp,  bkg, olimits = self.eline, init_fwhm = self.fwhm_guess)
+            fit, peakshape, chi2 = elastic_line_anyx(
+                temp, bkg, olimits=self.eline, init_fwhm=self.fwhm_guess
+            )
             row = nums[n]
             if fit is None:
                 width.append(-1.0)
@@ -1225,18 +1462,33 @@ class NewSimpleCore(QStandardItemModel):
                 areaerr.append(-1.0)
                 centre.append(0.0)
                 centreerr.append(-1.0)
-                peakcurves.append(np.column_stack([np.arange(10),  np.zeros(10)]))
+                peakcurves.append(np.column_stack([np.arange(10), np.zeros(10)]))
             else:
-                peak_area = fit[0][0]*abs(fit[0][1])/gauss_denum*(2*np.pi)**0.5
-                peak_area_error = peak_area*((fit[1][0]/fit[0][0])**2 + (fit[1][1]/fit[0][1])**2)**0.5
-                width.append(abs(round(fit[0][1],3)))
-                widtherr.append(abs(round(fit[1][1],3)))
-                centre.append(abs(round(fit[0][2],3)))
-                centreerr.append(abs(round(fit[1][2],3)))
-                area.append(round(peak_area,3))
-                areaerr.append(abs(round(peak_area_error,3)))
+                peak_area = (
+                    fit[0][0] * abs(fit[0][1]) / gauss_denum * (2 * np.pi) ** 0.5
+                )
+                peak_area_error = (
+                    peak_area
+                    * ((fit[1][0] / fit[0][0]) ** 2 + (fit[1][1] / fit[0][1]) ** 2)
+                    ** 0.5
+                )
+                width.append(abs(round(fit[0][1], 3)))
+                widtherr.append(abs(round(fit[1][1], 3)))
+                centre.append(abs(round(fit[0][2], 3)))
+                centreerr.append(abs(round(fit[1][2], 3)))
+                area.append(round(peak_area, 3))
+                areaerr.append(abs(round(peak_area_error, 3)))
                 peakcurves.append(peakshape)
-            for nn, d in enumerate([width[-1], widtherr[-1], area[-1], areaerr[-1], centre[-1], centreerr[-1]]):
+            for nn, d in enumerate(
+                [
+                    width[-1],
+                    widtherr[-1],
+                    area[-1],
+                    areaerr[-1],
+                    centre[-1],
+                    centreerr[-1],
+                ]
+            ):
                 column = nn + 6
                 intermediate = str(d).strip("()[]'")
                 try:
@@ -1249,10 +1501,11 @@ class NewSimpleCore(QStandardItemModel):
         self.mplot_curves = curves
         self.mplot_labels = labels
         self.mplot_fits = peakcurves
-        self.mplot_fitparams = [nums, width,  widtherr,  area,  areaerr, centre, centreerr]
+        self.mplot_fitparams = [nums, width, widtherr, area, areaerr, centre, centreerr]
         self.fitsworked = True
         self.finished_fitting.emit()
         return "Done"
+
     def manual_merge(self):
         self.update_ticks()
         templist = []
@@ -1267,6 +1520,7 @@ class NewSimpleCore(QStandardItemModel):
             self.profiles.append(newcurve)
             self.add_row(newcurve)
         self.finished_merge.emit()
+
     @pyqtSlot(str)
     def save_merged_profile(self, fname):
         if self.merged_curve is None:
@@ -1277,10 +1531,11 @@ class NewSimpleCore(QStandardItemModel):
             return True
             # outname = os.path.join(self.temp_path, self.temp_name+"_HISTOGRAM.txt")
             # WriteEnergyProfile(outname, target, [])
+
     @pyqtSlot(str)
     def save_ticked_profiles(self, fpath):
         self.reduce_profiles()
-        nums, labels,  curves = [], [], []
+        nums, labels, curves = [], [], []
         self.reduce_profiles()
         nums, Ei, names, temps, twothetas, qs = [], [], [], [], [], []
         for nr in self.matching_numbers:
@@ -1289,25 +1544,35 @@ class NewSimpleCore(QStandardItemModel):
             nums.append(nr)
             Ei.append(rmeas.energy)
             names.append(rmeas.shortsource)
-            temps.append(pdict['temperature'])
-            twothetas.append(pdict['arm_theta'])
-            qs.append(pdict['Q'])
+            temps.append(pdict["temperature"])
+            twothetas.append(pdict["arm_theta"])
+            qs.append(pdict["Q"])
         for rn, num in enumerate(nums):
-            curves.append(self.reduced_profiles[rn].copy() )
+            curves.append(self.reduced_profiles[rn].copy())
             labels.append(str(self.item(num, 0).text()))
-        if len(curves) ==0:
+        if len(curves) == 0:
             self.logger("There are no curves to be saved.")
             return None
         else:
             for num in range(len(curves)):
-                if labels[num][-4:] == '.txt':
-                    target = fpath + "/" + labels[num][:-4] + "_" + self.fname_suffix + ".txt"
+                if labels[num][-4:] == ".txt":
+                    target = (
+                        fpath
+                        + "/"
+                        + labels[num][:-4]
+                        + "_"
+                        + self.fname_suffix
+                        + ".txt"
+                    )
                 else:
-                    target = fpath + "/" + labels[num] + "_" + self.fname_suffix + '.txt'
+                    target = (
+                        fpath + "/" + labels[num] + "_" + self.fname_suffix + ".txt"
+                    )
                 WriteEnergyProfile(target, curves[num], [])
             return True
             # outname = os.path.join(self.temp_path, self.temp_name+"_HISTOGRAM.txt")
             # WriteEnergyProfile(outname, target, [])
+
     def fft_curves(self):
         self.reduce_profiles()
         nums, Ei, names, temps, twothetas, qs = [], [], [], [], [], []
@@ -1317,9 +1582,9 @@ class NewSimpleCore(QStandardItemModel):
             nums.append(nr)
             Ei.append(rmeas.energy)
             names.append(rmeas.shortsource)
-            temps.append(pdict['temperature'])
-            twothetas.append(pdict['arm_theta'])
-            qs.append(pdict['Q'])
+            temps.append(pdict["temperature"])
+            twothetas.append(pdict["arm_theta"])
+            qs.append(pdict["Q"])
         curves = []
         labels = []
         for rn, num in enumerate(nums):
@@ -1327,10 +1592,10 @@ class NewSimpleCore(QStandardItemModel):
             curves.append(temp)
             labels.append(str(Ei[rn]) + " eV, " + names[rn])
             # step = cur[np.where( cur[:,1] < np.percentile(cur[:,1], 60.0) )][:,1].std()
-        nums =np.array(nums)
-        xvals =np.array(Ei)
+        nums = np.array(nums)
+        xvals = np.array(Ei)
         for n in range(len(curves)):
-            xaxis = curves[n][:,0]
+            xaxis = curves[n][:, 0]
             xstep = (xaxis[1:] - xaxis[:-1]).mean()
             # new_x = fftfreq(len(xaxis), xstep)
             new_y = rfft(curves[n][:, 1])
@@ -1345,6 +1610,7 @@ class NewSimpleCore(QStandardItemModel):
         self.overplotworked = True
         self.finished_overplot.emit()
         return "Done"
+
     def fft_filter(self):
         self.reduce_profiles()
         nums, Ei, names, temps, twothetas, qs = [], [], [], [], [], []
@@ -1355,8 +1621,8 @@ class NewSimpleCore(QStandardItemModel):
             temps.append(self.retvals[nr][3])
             twothetas.append(self.retvals[nr][4])
             qs.append(self.retvals[nr][5])
-        nums =np.array(nums)
-        xvals =np.array(Ei)
+        nums = np.array(nums)
+        xvals = np.array(Ei)
         curves = []
         labels = []
         for rn, num in enumerate(nums):
@@ -1365,15 +1631,15 @@ class NewSimpleCore(QStandardItemModel):
             labels.append(names[rn])
             # step = cur[np.where( cur[:,1] < np.percentile(cur[:,1], 60.0) )][:,1].std()
         for n in range(len(curves)):
-            xaxis = curves[n][:,0]
+            xaxis = curves[n][:, 0]
             xstep = (xaxis[1:] - xaxis[:-1]).mean()
             new_x = fftfreq(len(xaxis), xstep)
             new_y = rfft(curves[n][:, 1])
-            new_y[-self.cutoff:] = 0.0
+            new_y[-self.cutoff :] = 0.0
             result = irfft(new_y)
             # norm = curves[n][:,1].sum()
             curves[n] = np.column_stack([xaxis, result])
-            labels[n] = 'Filtered_' + labels[n]
+            labels[n] = "Filtered_" + labels[n]
             # curves[n] = curves[n][np.where(curves[n][:,1] > 0.0)]
             # curves[n][:,1] *= 100.0
         self.filter_curves = curves
@@ -1392,7 +1658,7 @@ class NewSimpleCore(QStandardItemModel):
             else:
                 self.filter_units.append("???")
         self.filter_energies = Ei
-        for n,  lab in enumerate(self.filter_labels):
+        for n, lab in enumerate(self.filter_labels):
             self.fullnames += ["No file"]
             self.shortnames += [lab]
             self.profiles += [self.filter_curves[n]]
@@ -1405,6 +1671,7 @@ class NewSimpleCore(QStandardItemModel):
         self.overplotworked = True
         self.finished_filter.emit()
         return "Done"
+
     def multiplot(self):
         self.reduce_profiles()
         nums, Ei, names, temps, twothetas, qs = [], [], [], [], [], []
@@ -1414,9 +1681,9 @@ class NewSimpleCore(QStandardItemModel):
             nums.append(nr)
             Ei.append(rmeas.energy)
             names.append(rmeas.shortsource)
-            temps.append(pdict['temperature'])
-            twothetas.append(pdict['arm_theta'])
-            qs.append(pdict['Q'])
+            temps.append(pdict["temperature"])
+            twothetas.append(pdict["arm_theta"])
+            qs.append(pdict["Q"])
         curves = []
         labels = []
         for rn, num in enumerate(nums):
@@ -1429,6 +1696,7 @@ class NewSimpleCore(QStandardItemModel):
         self.overplotworked = True
         self.finished_overplot.emit()
         return "Done"
+
     def rixsmap(self):
         self.reduce_profiles(for_rixs=True)
         nums, Ei, names, temps, twothetas, qs = [], [], [], [], [], []
@@ -1438,9 +1706,9 @@ class NewSimpleCore(QStandardItemModel):
             nums.append(nr)
             Ei.append(rmeas.energy)
             names.append(rmeas.shortsource)
-            temps.append(pdict['temperature'])
-            twothetas.append(pdict['arm_theta'])
-            qs.append(pdict['Q'])
+            temps.append(pdict["temperature"])
+            twothetas.append(pdict["arm_theta"])
+            qs.append(pdict["Q"])
         curves = []
         labels = []
         for rn, num in enumerate(nums):
@@ -1454,34 +1722,34 @@ class NewSimpleCore(QStandardItemModel):
                 counter += 1
         if not (counter > 0):
             return None
-        chan,  en,  entran = 0, 0, 0
+        chan, en, entran = 0, 0, 0
         ocurves, curves = [], []
-        step = 0.0            
+        step = 0.0
         if self.current_rixsmap == 0:
-            xvals =np.array(Ei)
+            xvals = np.array(Ei)
         elif self.current_rixsmap == 1:
-            xvals =np.array(temps)
+            xvals = np.array(temps)
         elif self.current_rixsmap == 2:
-            xvals =np.array(twothetas)
+            xvals = np.array(twothetas)
         elif self.current_rixsmap == 3:
-            xvals =np.array(qs)
+            xvals = np.array(qs)
         ymin, ymax, ystep = 1e5, -1e5, 100.0
         for rn, num in enumerate(nums):
             temp = self.reduced_profiles[num].copy()
             ocurves.append(temp)
         for n in range(len(ocurves)):
-            cxaxis = ocurves[n][:,0]
+            cxaxis = ocurves[n][:, 0]
             cxstep = cxaxis[1:] - cxaxis[:-1]
             cxstep = np.concatenate([cxstep[:1], cxstep])
             ymin = min(ymin, cxaxis.min())
             ymax = max(ymax, cxaxis.max())
             ystep = min(ystep, cxstep.max())
-            norm = (ocurves[n][:,1] * cxstep).sum()
-            ocurves[n][:,1] /= norm
-            shift = np.percentile(ocurves[n][:,1], 75.0) - 0.01
-            ocurves[n][:,1] -= shift
-            ocurves[n] = ocurves[n][np.where(ocurves[n][:,1] > 0.0)]
-            ocurves[n][:,1] *= 100.0
+            norm = (ocurves[n][:, 1] * cxstep).sum()
+            ocurves[n][:, 1] /= norm
+            shift = np.percentile(ocurves[n][:, 1], 75.0) - 0.01
+            ocurves[n][:, 1] -= shift
+            ocurves[n] = ocurves[n][np.where(ocurves[n][:, 1] > 0.0)]
+            ocurves[n][:, 1] *= 100.0
         sequence = np.argsort(xvals)
         # print("RIXSMAP energies: ", xvals)
         # print("RIXSMAP sequence: ", sequence)
@@ -1495,30 +1763,32 @@ class NewSimpleCore(QStandardItemModel):
                 curves.append(ocurves[se])
         # curves = curves[crit]
         # now we need to define a grid for the map
-        yaxis = np.arange(ymin, ymax+0.1*ystep, ystep)
+        yaxis = np.arange(ymin, ymax + 0.1 * ystep, ystep)
         npixy = len(yaxis)
         xmin = xvals.min()
         xmax = xvals.max()
         xstep = max((xvals[1:] - xvals[:-1]).min(), 0.05)
-        xaxis = np.arange(xmin - xstep, xmax + xstep*1.01, xstep/5.0)
+        xaxis = np.arange(xmin - xstep, xmax + xstep * 1.01, xstep / 5.0)
         xmask = np.zeros(len(xaxis))
         npixx = len(xaxis)
         # define the 2D arrays as needed
-        map_array = np.zeros((npixy,npixx)).astype(np.float64)
+        map_array = np.zeros((npixy, npixx)).astype(np.float64)
         # extra output: text file
-        map_xyz = np.zeros([npixx*npixy, 3])
+        map_xyz = np.zeros([npixx * npixy, 3])
         # assign correct values
         # mcurves = []
         for n in range(len(curves)):
             xcrit = np.abs(xaxis - xvals[n])
-            pos, = np.where(xcrit == xcrit.min())
-            target = np.zeros((npixy,2))
-            target[:,0] = yaxis.copy()
-            print("RIXSMAP curve min/max:",curves[n][:,1].min(),curves[n][:,1].max())
-            yvals = merge2curves(curves[n], target)[:,1]
+            (pos,) = np.where(xcrit == xcrit.min())
+            target = np.zeros((npixy, 2))
+            target[:, 0] = yaxis.copy()
+            print(
+                "RIXSMAP curve min/max:", curves[n][:, 1].min(), curves[n][:, 1].max()
+            )
+            yvals = merge2curves(curves[n], target)[:, 1]
             # mcurves.append(merge2curves(curves[n], target))
-            map_array[:,pos] = yvals.reshape(map_array[:,pos].shape)
-            print("RIXSMAP pos, posshape: ", pos, map_array[:,pos].shape)
+            map_array[:, pos] = yvals.reshape(map_array[:, pos].shape)
+            print("RIXSMAP pos, posshape: ", pos, map_array[:, pos].shape)
             # map_array[:len(curves[n]),pos] = curves[n][:,1].reshape(map_array[:len(curves[n]),pos].shape)
             xmask[pos] = 1
         # apply smearing
@@ -1528,42 +1798,42 @@ class NewSimpleCore(QStandardItemModel):
         weight_array = np.zeros(len(xaxis))
         # smearwidth = 2.0 # meV
         smearwidth = self.smear
-        gridstep = xstep/5.0
-        width = int(math.ceil(smearwidth/gridstep))
+        gridstep = xstep / 5.0
+        width = int(math.ceil(smearwidth / gridstep))
         # print("RIXSMAP step, gridstep, width", xstep, gridstep, width)
         for n in range(len(xaxis)):
             if xmask[n]:
                 w_axis = np.zeros(len(xaxis))
                 w_axis[n] = 1.0
-                neglim, poslim = 0,0
-                for s in range(1,width):
-                    if n-s >= 0:
+                neglim, poslim = 0, 0
+                for s in range(1, width):
+                    if n - s >= 0:
                         neglim = s
-                        if xmask[n-s]:
+                        if xmask[n - s]:
                             break
-                for s in range(1,neglim):
-                    if n-s >= 0:
-                        w_axis[n-s] = 1.0 - s/float(neglim)
-                for s in range(1,width):
-                    if n+s < len(xmask):
+                for s in range(1, neglim):
+                    if n - s >= 0:
+                        w_axis[n - s] = 1.0 - s / float(neglim)
+                for s in range(1, width):
+                    if n + s < len(xmask):
                         poslim = s
-                        if xmask[n+s]:
+                        if xmask[n + s]:
                             break
-                for s in range(1,poslim):
-                    if n+s < len(xmask):
-                        w_axis[n+s] = 1.0 - s/float(poslim)
+                for s in range(1, poslim):
+                    if n + s < len(xmask):
+                        w_axis[n + s] = 1.0 - s / float(poslim)
                 for s in range(len(xaxis)):
                     if w_axis[s] > 0.0:
                         if xmask[s] > 0.0:
-                            virt_array[:,s] = map_array[:,s].copy()
+                            virt_array[:, s] = map_array[:, s].copy()
                             weight_array[s] = 1.0
                         else:
-                            virt_array[:,s] += w_axis[s]*(map_array[:,n].copy())
+                            virt_array[:, s] += w_axis[s] * (map_array[:, n].copy())
                             weight_array[s] += w_axis[s]
         print("RIXSMAP weigth array: ", weight_array)
         for n in range(len(xaxis)):
             if weight_array[n] > 0.0:
-                virt_array[:,n] /= weight_array[n]
+                virt_array[:, n] /= weight_array[n]
         # text output
         counter = 0
         for nx in np.arange(npixx):
@@ -1572,16 +1842,17 @@ class NewSimpleCore(QStandardItemModel):
                 map_xyz[counter, 1] = yaxis[ny]
                 map_xyz[counter, 2] = virt_array[ny, nx]
                 counter += 1
-        dump = open(self.temp_path + '/' + 'rixsmap_text.xyz', 'w')
+        dump = open(self.temp_path + "/" + "rixsmap_text.xyz", "w")
         for n in np.arange(len(map_xyz)):
-            dump.write(" ".join([str(xxx) for xxx in map_xyz[n]]) + '\n')
+            dump.write(" ".join([str(xxx) for xxx in map_xyz[n]]) + "\n")
         dump.close()
         # plot!
         self.map2D = [virt_array, map_array]
-        self.map2Dplotax = [(ymin,ymax), (xmin, xmax)]
+        self.map2Dplotax = [(ymin, ymax), (xmin, xmax)]
         self.rixs_worked = True
         self.finished_rixsmap.emit()
-        return "Done"    
+        return "Done"
+
     @pyqtSlot()
     def textToClipboard(self):
         # print("This should copy the table to clipboard.")
@@ -1595,10 +1866,11 @@ class NewSimpleCore(QStandardItemModel):
             rows.append(row)
         for r in rows:
             onerow = " ".join(r)
-            result += onerow + '\n'
+            result += onerow + "\n"
         clip = QApplication.clipboard()
         clip.clear()
         clip.setText(result)
+
     @pyqtSlot()
     def excelToClipboard(self):
         # print("This should copy the table to clipboard in a format suitable for a spreadsheet.")
@@ -1612,14 +1884,15 @@ class NewSimpleCore(QStandardItemModel):
             rows.append(row)
         for r in rows:
             onerow = "\t".join(r)
-            result += onerow + '\n'
+            result += onerow + "\n"
         clip = QApplication.clipboard()
         clip.setText(result)
+
     def add_row(self, rixsmeas):
         self.busy = True
-# tabnames = ['Filename', 'Ei (eV)', 'Temperature (K)', '2 theta (deg)',  'Q (1/A)',  'Use it?', 'FWHM', '+/- dFWHM',  'Int.',  '+/- dInt.',  'Centre',  '+/- dCentre']
+        # tabnames = ['Filename', 'Ei (eV)', 'Temperature (K)', '2 theta (deg)',  'Q (1/A)',  'Use it?', 'FWHM', '+/- dFWHM',  'Int.',  '+/- dInt.',  'Centre',  '+/- dCentre']
         # self.table.blockSignals(True)
-        temp = len(self.col_order)*[QStandardItem("")]
+        temp = len(self.col_order) * [QStandardItem("")]
         pdict = rixsmeas.summariseCrucialParts()
         if self.current_1dplot_axis == 0:
             fitpars = rixsmeas.fitting_params_absEnergy
@@ -1627,8 +1900,22 @@ class NewSimpleCore(QStandardItemModel):
             fitpars = rixsmeas.fitting_params_eV
         else:
             fitpars = rixsmeas.fitting_params_channels
-        for nn, d in enumerate([rixsmeas.shortsource, rixsmeas.energy, pdict['temperature'], pdict['arm_theta'], pdict['Q'], rixsmeas.active, 
-                                           fitpars['fwhm'], fitpars['fwhm_error'], fitpars['area'], fitpars['area_error'], fitpars['centre'], fitpars['centre_error']]):
+        for nn, d in enumerate(
+            [
+                rixsmeas.shortsource,
+                rixsmeas.energy,
+                pdict["temperature"],
+                pdict["arm_theta"],
+                pdict["Q"],
+                rixsmeas.active,
+                fitpars["fwhm"],
+                fitpars["fwhm_error"],
+                fitpars["area"],
+                fitpars["area_error"],
+                fitpars["centre"],
+                fitpars["centre_error"],
+            ]
+        ):
             intermediate = str(d).strip("()[]'")
             try:
                 interm2 = round(float(intermediate), 3)
@@ -1647,31 +1934,41 @@ class NewSimpleCore(QStandardItemModel):
         self.busy = False
         # self.table.blockSignals(False)
         # self.needanupdate.emit()
+
     @pyqtSlot()
     def clear_table(self):
         for nr in range(0, self.rowCount())[::-1]:
             self.removeRows(nr, 1)
         self.gotvals.emit()
+
     def return_values(self):
-        final = []            
-        for nr in range(0,  self.rowCount()):
+        final = []
+        for nr in range(0, self.rowCount()):
             for nc in [5]:
-                self.useit[nr] = (self.item(nr, nc).checkState() == Qt.CheckState.Checked)
+                self.useit[nr] = self.item(nr, nc).checkState() == Qt.CheckState.Checked
         for nr in range(len(self.useit)):
             if self.useit[nr]:
                 rowdata = [nr]
-                rowdata += [self.Ei[nr],  self.name[nr], 
-                                  self.temperature[nr], self.twotheta[nr], self.Q[nr]]
+                rowdata += [
+                    self.Ei[nr],
+                    self.name[nr],
+                    self.temperature[nr],
+                    self.twotheta[nr],
+                    self.Q[nr],
+                ]
                 final.append(rowdata)
         return final
+
     @pyqtSlot()
     def update_ticks(self):
         if self.busy:
             return None
         self.busy = True
-        for nr in range(0,  self.rowCount()):
+        for nr in range(0, self.rowCount()):
             modind = self.item(nr, 5).index().row()
-            print(nr,  modind)
-            self.profiles[nr].active = (self.item(nr, 5).checkState() == Qt.CheckState.Checked)
-                    # self.useit[nr-1] = not self.useit[nr-1]
+            print(nr, modind)
+            self.profiles[nr].active = (
+                self.item(nr, 5).checkState() == Qt.CheckState.Checked
+            )
+            # self.useit[nr-1] = not self.useit[nr-1]
         self.busy = False
