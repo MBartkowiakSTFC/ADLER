@@ -115,7 +115,7 @@ class RixsMeasurement:
         self.active = True  # only a temporary setting in the GUI
         if filenames:
             self.loadFiles(filenames)
-            
+
     def summariseCrucialParts(self):
         pdict = {}
         pdict["calibration"] = []
@@ -989,8 +989,10 @@ class RixsMeasurement:
                 else:
                     temp2 = temp * self.times[n]
                     temp2.reshape((1, det_width))
-                    temp2 *= np.ones((det_length, 1))
-                    self.data[n] -= temp2
+                    for ix in np.arange(det_width):
+                        self.data[n,ix]-= temp2[ix]
+                    #temp2 *= np.ones((det_length, 1))
+                    #self.data[n] -= temp2
             else:
                 continue
         self.addHistory("SubtractDarkCurrent, scaling=" + str(scaling))
@@ -1463,4 +1465,4 @@ class RixsMeasurement:
         # pdict['temperature']
         # pdict['arm_theta']
         # pdict['Q']
-        return temp
+        return temp#
