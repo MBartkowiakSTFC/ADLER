@@ -5,7 +5,7 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-from src.DataHandling import DataEntry, DataGroup
+from ADLER.ADLERcalc.DataHandling import DataEntry, DataGroup
 
 import pytest
 
